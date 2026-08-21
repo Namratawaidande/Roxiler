@@ -165,12 +165,25 @@ class StoreService {
     }
 
     // Mock response filtering & sorting
+    const ratingService = require('./rating.service');
+    const ratingsList = ratingService.mockRatingsCollection || [];
+
     let filtered = mockStoresList.map((s) => {
-      const userRatingEntry = numericUserId ? mockUserRatings[`${s.id}_${numericUserId}`] : null;
+      const userRatingEntry = numericUserId
+        ? ratingsList.find((r) => r.store_id === s.id && r.user_id === numericUserId)
+        : null;
+
+      const storeRatings = ratingsList.filter((r) => r.store_id === s.id);
+      const avg = storeRatings.length > 0
+        ? Math.round((storeRatings.reduce((acc, curr) => acc + curr.rating_value, 0) / storeRatings.length) * 10) / 10
+        : s.averageRating;
+
       return {
         ...s,
-        myRating: userRatingEntry ? userRatingEntry.rating : null,
-        userSubmittedRating: userRatingEntry ? userRatingEntry.rating : null,
+        averageRating: avg,
+        overall_rating: avg,
+        myRating: userRatingEntry ? userRatingEntry.rating_value : null,
+        userSubmittedRating: userRatingEntry ? userRatingEntry.rating_value : null,
         myComment: userRatingEntry ? userRatingEntry.comment : null
       };
     });

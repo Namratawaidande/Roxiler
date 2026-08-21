@@ -44,7 +44,7 @@ const createRatingValidator = [
 ];
 
 /**
- * Validation rules for modifying an existing rating (PUT /api/v1/ratings/:id or PUT /api/v1/ratings/store/:storeId)
+ * Validation rules for modifying an existing rating (PUT /api/v1/ratings/:storeId)
  */
 const updateRatingValidator = [
   body('rating')
@@ -72,7 +72,17 @@ const updateRatingValidator = [
     .withMessage('Review comment cannot exceed 400 characters.')
 ];
 
+/**
+ * Store ID parameter validator for ratings endpoint
+ */
+const storeIdParamValidator = [
+  param('storeId')
+    .isInt({ min: 1 })
+    .withMessage('Store ID parameter must be a positive integer.')
+];
+
 module.exports = {
   createRatingValidator,
-  updateRatingValidator
+  updateRatingValidator,
+  storeIdParamValidator
 };

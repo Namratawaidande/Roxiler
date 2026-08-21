@@ -1,6 +1,6 @@
 const express = require('express');
-const { submitRating } = require('../controllers/rating.controller');
-const { createRatingValidator } = require('../validators/rating.validator');
+const { submitRating, updateRating } = require('../controllers/rating.controller');
+const { createRatingValidator, updateRatingValidator, storeIdParamValidator } = require('../validators/rating.validator');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
@@ -19,6 +19,20 @@ router.post(
   authorize(ROLES.NORMAL_USER),
   validate(createRatingValidator),
   submitRating
+);
+
+/**
+ * @route   PUT /api/v1/ratings/:storeId
+ * @desc    Modify an existing store rating
+ * @access  Private (NORMAL_USER only)
+ */
+router.put(
+  '/:storeId',
+  authenticate,
+  authorize(ROLES.NORMAL_USER),
+  validate(storeIdParamValidator),
+  validate(updateRatingValidator),
+  updateRating
 );
 
 module.exports = router;

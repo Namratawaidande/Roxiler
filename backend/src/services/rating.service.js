@@ -91,6 +91,103 @@ class RatingService {
     mockRatingsCollection.push(newRating);
     return newRating;
   }
+
+  /**
+   * Modify an existing store rating (NORMAL_USER only, ownership verified)
+   */
+  async updateRating(storeId, { rating, rating_value, comment }, user) {
+    if (!user || user.role !== ROLES.NORMAL_USER) {
+      throw new ForbiddenError('Only NORMAL_USER accounts can modify store ratings.');
+    }
+
+    const numericStoreId = parseInt(storeId, 10);
+    const numericRating = parseInt(rating !== undefined ? rating : rating_value, 10);
+    const cleanComment = comment !== undefined ? (comment ? comment.trim() : null) : undefined;
+
+    if (isNaN(numericRating) || numericRating < 1 || numericRating > 5) {
+      throw new BadRequestError('Rating must be an integer between 1 and 5.');
+    }
+
+    if (db.getStatus().connected) {
+      // 1. Verify Store Existence
+      const storeRes = await db.query('SELECT id, name FROM stores WHERE id = $1', [numericStoreId]);
+      if (storeRes.rows.length === 0) {
+        throw new NotFoundError(`Store with ID ${numericStoreId} not found.`);
+      }
+
+      // 2. Verify Rating Ownership
+      const existingRes = await db.query(
+        'SELECT id, rating_value FROM ratings WHERE user_id = $1 AND store_id = $2',
+        [user.id, numericStoreId]
+      );
+      if (existingRes.rows.length === 0) {
+        throw new NotFoundError(`You have not submitted a rating for store #${numericStoreId} yet. Please submit a rating first.`);
+      }
+
+      // 3. Update Rating Record
+      let updateQuery;
+      let params;
+      if (cleanComment !== undefined) {
+        updateQuery = `
+          UPDATE ratings
+          SET rating_value = $1, comment = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $3 AND store_id = $4
+          RETURNING id, user_id, store_id, rating_value, comment, created_at, updated_at
+        `;
+        params = [numericRating, cleanComment, user.id, numericStoreId];
+      } else {
+        updateQuery = `
+          UPDATE ratings
+          SET rating_value = $1, updated_at = CURRENT_TIMESTAMP
+          WHERE user_id = $2 AND store_id = $3
+          RETURNING id, user_id, store_id, rating_value, comment, created_at, updated_at
+        `;
+        params = [numericRating, user.id, numericStoreId];
+      }
+
+      const updateRes = await db.query(updateQuery, params);
+      const updatedRating = updateRes.rows[0];
+
+      // 4. Recalculate Store Overall Rating
+      const avgRes = await db.query(
+        `SELECT 
+           COALESCE(ROUND(AVG(rating_value)::numeric, 1), 0.0)::float as "averageRating",
+           COUNT(id)::int as "ratingCount"
+         FROM ratings WHERE store_id = $1`,
+        [numericStoreId]
+      );
+
+      return {
+        ...updatedRating,
+        storeName: storeRes.rows[0].name,
+        storeAverageRating: avgRes.rows[0].averageRating,
+        storeRatingCount: avgRes.rows[0].ratingCount
+      };
+    }
+
+    // Mock Fallback
+    const validStoreIds = [1, 2, 3];
+    if (!validStoreIds.includes(numericStoreId)) {
+      throw new NotFoundError(`Store with ID ${numericStoreId} not found.`);
+    }
+
+    const ratingIndex = mockRatingsCollection.findIndex((r) => r.user_id === user.id && r.store_id === numericStoreId);
+    if (ratingIndex === -1) {
+      throw new NotFoundError(`You have not submitted a rating for store #${numericStoreId} yet. Please submit a rating first.`);
+    }
+
+    mockRatingsCollection[ratingIndex] = {
+      ...mockRatingsCollection[ratingIndex],
+      rating_value: numericRating,
+      ...(cleanComment !== undefined ? { comment: cleanComment } : {}),
+      updated_at: new Date().toISOString()
+    };
+
+    return mockRatingsCollection[ratingIndex];
+  }
 }
 
-module.exports = new RatingService();
+const ratingService = new RatingService();
+ratingService.mockRatingsCollection = mockRatingsCollection;
+
+module.exports = ratingService;
