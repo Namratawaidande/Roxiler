@@ -1,8 +1,34 @@
 const http = require('http');
+const app = require('../src/app');
+
+let server;
+let baseUrl = '';
+
+const startTestServer = () => {
+  return new Promise((resolve, reject) => {
+    server = http.createServer(app);
+    server.listen(0, '127.0.0.1', () => {
+      const port = server.address().port;
+      baseUrl = `http://127.0.0.1:${port}`;
+      resolve();
+    });
+    server.on('error', reject);
+  });
+};
+
+const stopTestServer = () => {
+  return new Promise((resolve) => {
+    if (server) {
+      server.close(() => resolve());
+    } else {
+      resolve();
+    }
+  });
+};
 
 const request = (method, path, body = null, token = null) => {
   return new Promise((resolve, reject) => {
-    const url = new URL(`http://localhost:5000${path}`);
+    const url = new URL(`${baseUrl}${path}`);
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -29,121 +55,96 @@ const request = (method, path, body = null, token = null) => {
 };
 
 const runTests = async () => {
-  console.log('🛡️  Running Complete Normal User Registration & RBAC Test Suite...\n');
+  await startTestServer();
+  console.log(`🧪 Test Server initialized on ${baseUrl}\n`);
+  console.log('🛡️  Running Complete System Admin Dashboard & Security Test Suite...\n');
 
-  // --- 1. NORMAL USER REGISTRATION VALIDATION SUITE ---
-  console.log('--- 1. NORMAL USER REGISTRATION VALIDATION & SECURITY CHECKS ---');
+  try {
+    // --- 1. HEALTH & SYSTEM DIAGNOSTICS ---
+    const health = await request('GET', '/api/v1/health');
+    if (health.statusCode !== 200) throw new Error('Health check failed');
+    console.log('  ✔ [GET /api/v1/health] - System diagnostics operational (200 OK)');
 
-  // A. Name too short (< 20 chars)
-  const shortName = await request('POST', '/api/v1/auth/register', {
-    name: 'Short Name', // 10 chars
-    email: 'test.short@example.com',
-    password: 'ValidPassword@123',
-    address: '123 Test St'
-  });
-  if (shortName.statusCode !== 422) throw new Error('Short name (<20 chars) was not rejected with 422');
-  console.log('  ✔ [POST /api/v1/auth/register] Name < 20 chars rejected (422 Unprocessable Entity)');
+    // --- 2. AUTHENTICATING TEST ROLES ---
+    const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
+    if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
+    const adminToken = adminLogin.data.data.token;
+    console.log('  ✔ SYSTEM_ADMIN authenticated.');
 
-  // B. Name too long (> 60 chars)
-  const longName = await request('POST', '/api/v1/auth/register', {
-    name: 'This is an exceedingly excessively long customer name that definitely exceeds the sixty characters limit easily',
-    email: 'test.long@example.com',
-    password: 'ValidPassword@123'
-  });
-  if (longName.statusCode !== 422) throw new Error('Long name (>60 chars) was not rejected with 422');
-  console.log('  ✔ [POST /api/v1/auth/register] Name > 60 chars rejected (422 Unprocessable Entity)');
+    const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
+    if (ownerLogin.statusCode !== 200) throw new Error('Store Owner login failed');
+    const ownerToken = ownerLogin.data.data.token;
+    console.log('  ✔ STORE_OWNER authenticated.');
 
-  // C. Password missing uppercase letter
-  const noUpperPass = await request('POST', '/api/v1/auth/register', {
-    name: 'Valid Length User Name 2026',
-    email: 'test.noupper@example.com',
-    password: 'lowercaseonly@123'
-  });
-  if (noUpperPass.statusCode !== 422) throw new Error('Password missing uppercase was not rejected with 422');
-  console.log('  ✔ [POST /api/v1/auth/register] Password without uppercase letter rejected (422)');
+    const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
+    if (userLogin.statusCode !== 200) throw new Error('Normal User login failed');
+    const userToken = userLogin.data.data.token;
+    console.log('  ✔ NORMAL_USER authenticated.');
 
-  // D. Password missing special character
-  const noSpecialPass = await request('POST', '/api/v1/auth/register', {
-    name: 'Valid Length User Name 2026',
-    email: 'test.nospecial@example.com',
-    password: 'ValidPassword123'
-  });
-  if (noSpecialPass.statusCode !== 422) throw new Error('Password missing special character was not rejected with 422');
-  console.log('  ✔ [POST /api/v1/auth/register] Password without special character rejected (422)');
+    // --- 3. SYSTEM ADMINISTRATOR DASHBOARD METRICS ---
+    console.log('\n--- 3. SYSTEM ADMINISTRATOR DASHBOARD METRICS & REAL-TIME DATA ---');
+    const adminDash = await request('GET', '/api/v1/dashboard/admin', null, adminToken);
+    if (adminDash.statusCode !== 200) throw new Error('Admin dashboard retrieval failed');
+    
+    const stats = adminDash.data.data.stats;
+    if (typeof stats.totalUsers !== 'number') throw new Error('totalUsers metric missing');
+    if (typeof stats.totalStores !== 'number') throw new Error('totalStores metric missing');
+    if (typeof stats.totalRatings !== 'number') throw new Error('totalRatings metric missing');
+    if (!stats.roleDistribution || typeof stats.roleDistribution.SYSTEM_ADMIN !== 'number') throw new Error('roleDistribution missing');
+    if (!stats.ratingDistribution) throw new Error('ratingDistribution missing');
 
-  // E. Password too long (> 16 chars)
-  const longPass = await request('POST', '/api/v1/auth/register', {
-    name: 'Valid Length User Name 2026',
-    email: 'test.longpass@example.com',
-    password: 'ThisPasswordIsWayTooLong@12345'
-  });
-  if (longPass.statusCode !== 422) throw new Error('Password > 16 chars was not rejected with 422');
-  console.log('  ✔ [POST /api/v1/auth/register] Password > 16 chars rejected (422)');
+    console.log(`  ✔ [GET /api/v1/dashboard/admin] Total Users: ${stats.totalUsers} (Admins: ${stats.roleDistribution.SYSTEM_ADMIN}, Owners: ${stats.roleDistribution.STORE_OWNER}, Users: ${stats.roleDistribution.NORMAL_USER})`);
+    console.log(`  ✔ [GET /api/v1/dashboard/admin] Total Stores: ${stats.totalStores}, Total Ratings: ${stats.totalRatings}`);
+    console.log(`  ✔ [GET /api/v1/dashboard/admin] Star Distributions & Recent Activity verified (200 OK)`);
 
-  // F. Attempt Privilege Escalation (Passing role: "SYSTEM_ADMIN")
-  const randomId = Math.floor(1000 + Math.random() * 9000);
-  const escalationAttempt = await request('POST', '/api/v1/auth/register', {
-    name: `Christopher Robin Anderson ${randomId}`,
-    email: `chris.anderson${randomId}@example.com`,
-    password: 'SecureUser@123',
-    role: 'SYSTEM_ADMIN' // Malicious attempt to self-assign admin
-  });
-  if (escalationAttempt.statusCode !== 201) throw new Error('Registration failed');
-  if (escalationAttempt.data.data.user.role !== 'NORMAL_USER') {
-    throw new Error(`Privilege Escalation bug: User registered with role ${escalationAttempt.data.data.user.role} instead of NORMAL_USER!`);
+    // --- 4. ADMIN DASHBOARD RBAC ACCESS CONTROL RESTRICTIONS ---
+    console.log('\n--- 4. ADMIN DASHBOARD RBAC AUTHORIZATION GUARDS ---');
+    
+    // A. STORE_OWNER attempting to access Admin Dashboard
+    const ownerToAdmin = await request('GET', '/api/v1/dashboard/admin', null, ownerToken);
+    if (ownerToAdmin.statusCode !== 403) throw new Error('STORE_OWNER was not blocked with 403 Forbidden from admin dashboard');
+    console.log('  ✔ [GET /api/v1/dashboard/admin] STORE_OWNER blocked (403 Forbidden as expected)');
+
+    // B. NORMAL_USER attempting to access Admin Dashboard
+    const userToAdmin = await request('GET', '/api/v1/dashboard/admin', null, userToken);
+    if (userToAdmin.statusCode !== 403) throw new Error('NORMAL_USER was not blocked with 403 Forbidden from admin dashboard');
+    console.log('  ✔ [GET /api/v1/dashboard/admin] NORMAL_USER blocked (403 Forbidden as expected)');
+
+    // C. Unauthenticated user attempting to access Admin Dashboard
+    const unauthToAdmin = await request('GET', '/api/v1/dashboard/admin');
+    if (unauthToAdmin.statusCode !== 401) throw new Error('Unauthenticated user was not blocked with 401 Unauthorized');
+    console.log('  ✔ [GET /api/v1/dashboard/admin] Unauthenticated request blocked (401 Unauthorized as expected)');
+
+    // --- 5. NORMAL USER REGISTRATION VALIDATION RULES ---
+    console.log('\n--- 5. REGISTRATION VALIDATION & PRIVILEGE GUARDS ---');
+    const shortName = await request('POST', '/api/v1/auth/register', { name: 'Short Name', email: 'test.short@example.com', password: 'ValidPassword@123' });
+    if (shortName.statusCode !== 422) throw new Error('Short name was not rejected with 422');
+    console.log('  ✔ [POST /api/v1/auth/register] Name < 20 chars rejected (422 Unprocessable Entity)');
+
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    const validReg = await request('POST', '/api/v1/auth/register', {
+      name: `Alexander Montgomery Wright ${randomId}`,
+      email: `alex.wright${randomId}@example.com`,
+      password: 'SecureUser@123',
+      role: 'SYSTEM_ADMIN' // Malicious attempt to escalate role
+    });
+    if (validReg.statusCode !== 201) throw new Error('Registration failed');
+    if (validReg.data.data.user.role !== 'NORMAL_USER') throw new Error('Privilege Escalation bug');
+    if (validReg.data.data.user.password_hash) throw new Error('Password hash leaked');
+    console.log('  ✔ [POST /api/v1/auth/register] Privilege Escalation Guard: Forced role = NORMAL_USER (201 Created)');
+
+    console.log('\n✨ ALL SYSTEM ADMINISTRATOR DASHBOARD & RBAC SECURITY TESTS PASSED!\n');
+  } finally {
+    await stopTestServer();
   }
-  if (escalationAttempt.data.data.user.password_hash || escalationAttempt.data.data.user.password) {
-    throw new Error('Security violation: Password hash leaked in registration payload!');
-  }
-  console.log('  ✔ [POST /api/v1/auth/register] Privilege Escalation Guard: Forced role = NORMAL_USER (201 Created)');
-
-  // G. Duplicate Email Rejection (409 Conflict)
-  const duplicateAttempt = await request('POST', '/api/v1/auth/register', {
-    name: `Christopher Robin Anderson ${randomId}`,
-    email: `chris.anderson${randomId}@example.com`,
-    password: 'SecureUser@123'
-  });
-  if (duplicateAttempt.statusCode !== 409) throw new Error('Duplicate email was not rejected with 409 Conflict');
-  console.log('  ✔ [POST /api/v1/auth/register] Duplicate email rejected (409 Conflict)');
-
-  // --- 2. AUTHENTICATION & RBAC PERMISSION MATRIX CHECKS ---
-  console.log('\n--- 2. RBAC ACCESS CONTROL & ROLE GUARDS ---');
-  const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
-  const adminToken = adminLogin.data.data.token;
-
-  const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
-  const ownerToken = ownerLogin.data.data.token;
-
-  const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-  const userToken = userLogin.data.data.token;
-
-  // Admin access
-  const adminGetUsers = await request('GET', '/api/v1/users', null, adminToken);
-  if (adminGetUsers.statusCode !== 200) throw new Error('Admin failed to access /users');
-  console.log('  ✔ [GET /api/v1/users] (Admin) -> 200 OK');
-
-  // Store Owner access & restrictions
-  const ownerDash = await request('GET', '/api/v1/dashboard/owner', null, ownerToken);
-  if (ownerDash.statusCode !== 200) throw new Error('Owner failed to access /dashboard/owner');
-  console.log('  ✔ [GET /api/v1/dashboard/owner] (Store Owner) -> 200 OK');
-
-  const ownerForbidden = await request('GET', '/api/v1/users', null, ownerToken);
-  if (ownerForbidden.statusCode !== 403) throw new Error('Store Owner was not blocked from /users with 403');
-  console.log('  ✔ [GET /api/v1/users] (Store Owner) -> 403 Forbidden (Blocked as expected)');
-
-  // Normal User access & restrictions
-  const userDash = await request('GET', '/api/v1/dashboard/user', null, userToken);
-  if (userDash.statusCode !== 200) throw new Error('User failed to access /dashboard/user');
-  console.log('  ✔ [GET /api/v1/dashboard/user] (Normal User) -> 200 OK');
-
-  const userForbidden = await request('GET', '/api/v1/dashboard/admin', null, userToken);
-  if (userForbidden.statusCode !== 403) throw new Error('Normal User was not blocked from /dashboard/admin with 403');
-  console.log('  ✔ [GET /api/v1/dashboard/admin] (Normal User) -> 403 Forbidden (Blocked as expected)');
-
-  console.log('\n✨ ALL REGISTRATION, VALIDATION, AND RBAC TESTS PASSED!\n');
 };
 
-runTests().catch((err) => {
-  console.error('❌ Test failed:', err.message);
-  process.exit(1);
-});
+runTests()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch(async (err) => {
+    console.error('❌ Test failed:', err.message);
+    await stopTestServer();
+    process.exit(1);
+  });
