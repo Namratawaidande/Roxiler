@@ -58,7 +58,7 @@ const updateStoreValidator = [
 const storeQueryValidator = [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.'),
-  query('sortBy').optional().isIn(['id', 'name', 'email', 'address', 'rating', 'averageRating', 'ratingCount', 'created_at']).withMessage('Invalid sortBy field. Supported: id, name, email, address, rating, averageRating, ratingCount, created_at.'),
+  query('sortBy').optional().isIn(['id', 'name', 'email', 'address', 'rating', 'averageRating', 'ratingCount', 'myRating', 'created_at']).withMessage('Invalid sortBy field. Supported: id, name, email, address, rating, averageRating, ratingCount, myRating, created_at.'),
   query('order').optional().isIn(['asc', 'desc', 'ASC', 'DESC']).withMessage('Order must be ASC or DESC.'),
   query('search').optional().trim(),
   query('name').optional().trim(),

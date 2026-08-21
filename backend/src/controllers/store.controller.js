@@ -3,11 +3,11 @@ const { ApiResponse } = require('../utils/apiResponse');
 const storeService = require('../services/store.service');
 
 /**
- * Get Stores List with Search, Filter, Sort, Pagination
+ * Get Stores List with Search, Filter, Sort, Pagination, and authenticated user's submitted rating
  * GET /api/v1/stores
  */
 const getStores = asyncHandler(async (req, res) => {
-  const result = await storeService.getStores(req.query);
+  const result = await storeService.getStores(req.query, req.user?.id);
   return ApiResponse.success(res, { stores: result.stores }, 'Stores list retrieved successfully.', 200, result.meta);
 });
 

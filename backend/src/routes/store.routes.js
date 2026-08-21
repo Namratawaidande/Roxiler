@@ -10,17 +10,17 @@ const router = express.Router();
 
 /**
  * @route   GET /api/v1/stores
- * @desc    Get stores list with search, filter, sort & pagination
- * @access  Public
+ * @desc    Get stores list with search, filter, sort & pagination, including authenticated user's submitted rating
+ * @access  Private (Authenticated users)
  */
-router.get('/', validate(storeQueryValidator), getStores);
+router.get('/', authenticate, validate(storeQueryValidator), getStores);
 
 /**
  * @route   GET /api/v1/stores/:id
  * @desc    Get single store by ID with average rating
- * @access  Public
+ * @access  Private (Authenticated users)
  */
-router.get('/:id', validate(storeIdParamValidator), getStoreById);
+router.get('/:id', authenticate, validate(storeIdParamValidator), getStoreById);
 
 /**
  * @route   POST /api/v1/stores
