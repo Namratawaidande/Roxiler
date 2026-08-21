@@ -22,14 +22,15 @@ const parsePagination = (query = {}, defaultLimit = 10, maxLimit = 100) => {
 };
 
 /**
- * Parse sorting parameters safely against a whitelist of columns
+ * Parse sorting parameters safely against a whitelist of columns to prevent SQL injection
  * @param {Object} query - Express req.query
  * @param {Array<string>} allowedColumns - Whitelist of sortable column names
  * @param {string} defaultColumn - Default column to sort by
  * @param {string} defaultOrder - Default sort direction ('ASC' or 'DESC')
  */
 const parseSort = (query = {}, allowedColumns = ['id', 'created_at'], defaultColumn = 'created_at', defaultOrder = 'DESC') => {
-  const sortBy = allowedColumns.includes(query.sortBy) ? query.sortBy : defaultColumn;
+  const cleanSortBy = (query.sortBy || '').trim();
+  const sortBy = allowedColumns.includes(cleanSortBy) ? cleanSortBy : defaultColumn;
   const order = (query.order || defaultOrder).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   return {
@@ -46,6 +47,14 @@ const buildPaginationMeta = (totalItems, page, limit) => {
   const totalPages = Math.ceil(totalItems / limit) || 1;
 
   return {
+    totalItems,
+    itemsPerPage: limit,
+    limit,
+    currentPage: page,
+    page,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
     pagination: {
       totalItems,
       itemsPerPage: limit,

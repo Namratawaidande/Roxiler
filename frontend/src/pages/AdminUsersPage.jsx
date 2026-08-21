@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -11,16 +11,16 @@ import {
   Eye,
   RefreshCw,
   X,
-  ChevronLeft,
-  ChevronRight,
   Shield,
   MapPin,
   Mail
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
+import { Pagination } from '../components/common/Pagination';
 import { AddUserModal } from '../components/admin/AddUserModal';
 import { UserDetailsModal } from '../components/admin/UserDetailsModal';
+import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
 export const AdminUsersPage = () => {
@@ -29,7 +29,7 @@ export const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filter States
+  // Filter Input States
   const [filters, setFilters] = useState({
     search: '',
     name: '',
@@ -37,6 +37,12 @@ export const AdminUsersPage = () => {
     address: '',
     role: ''
   });
+
+  // Debounced filter values for smooth server querying
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const debouncedName = useDebounce(filters.name, 300);
+  const debouncedEmail = useDebounce(filters.email, 300);
+  const debouncedAddress = useDebounce(filters.address, 300);
 
   // Sorting State
   const [sort, setSort] = useState({
@@ -53,7 +59,8 @@ export const AdminUsersPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  const fetchUsers = async () => {
+  // Server-side query execution with full state synchronization
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -66,10 +73,10 @@ export const AdminUsersPage = () => {
       };
 
       if (filters.role) params.role = filters.role;
-      if (filters.search.trim()) params.search = filters.search.trim();
-      if (filters.name.trim()) params.name = filters.name.trim();
-      if (filters.email.trim()) params.email = filters.email.trim();
-      if (filters.address.trim()) params.address = filters.address.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (debouncedName.trim()) params.name = debouncedName.trim();
+      if (debouncedEmail.trim()) params.email = debouncedEmail.trim();
+      if (debouncedAddress.trim()) params.address = debouncedAddress.trim();
 
       const response = await api.get('/users', { params });
       if (response?.data?.users) {
@@ -83,23 +90,22 @@ export const AdminUsersPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, sort.sortBy, sort.order, filters.role, debouncedSearch, debouncedName, debouncedEmail, debouncedAddress]);
 
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, sort, filters.role]);
+  }, [fetchUsers]);
+
+  // Reset page to 1 when filters or search change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, debouncedName, debouncedEmail, debouncedAddress, filters.role]);
 
   const handleFilterChange = (e) => {
-    setFilters({
-      ...filters,
+    setFilters((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchUsers();
+    }));
   };
 
   const handleClearFilters = () => {
@@ -114,17 +120,18 @@ export const AdminUsersPage = () => {
   };
 
   const handleSort = (column) => {
-    if (sort.sortBy === column) {
-      setSort({
-        sortBy: column,
-        order: sort.order === 'ASC' ? 'DESC' : 'ASC'
-      });
-    } else {
-      setSort({
+    setSort((prev) => {
+      if (prev.sortBy === column) {
+        return {
+          sortBy: column,
+          order: prev.order === 'ASC' ? 'DESC' : 'ASC'
+        };
+      }
+      return {
         sortBy: column,
         order: 'ASC'
-      });
-    }
+      };
+    });
     setPage(1);
   };
 
@@ -151,6 +158,10 @@ export const AdminUsersPage = () => {
     }
   };
 
+  const hasActiveFilters = Boolean(
+    filters.search || filters.name || filters.email || filters.address || filters.role
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
       {/* Page Header */}
@@ -166,7 +177,7 @@ export const AdminUsersPage = () => {
           </div>
           <h1 style={{ fontSize: '2rem' }}>User Management Directory</h1>
           <p style={{ fontSize: '0.95rem' }}>
-            Create, inspect, filter, and manage platform accounts across all roles.
+            Server-side filtered, sorted, and paginated directory of registered platform users.
           </p>
         </div>
 
@@ -183,12 +194,23 @@ export const AdminUsersPage = () => {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
       {/* Multi-Dimensional Filter Card */}
-      <form onSubmit={handleSearchSubmit} className="glass-card" style={{ padding: '1.25rem' }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Filter size={14} /> Search & Filter Platform Users
+      <div className="glass-card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Filter size={14} /> Live Server-Side Filters
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+            >
+              <X size={12} /> Clear All Filters
+            </button>
+          )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
           {/* Quick Search */}
           <div>
             <label className="form-label" style={{ fontSize: '0.75rem' }}>General Search</label>
@@ -258,54 +280,16 @@ export const AdminUsersPage = () => {
             </select>
           </div>
         </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
-          <Button type="button" variant="secondary" size="sm" onClick={handleClearFilters}>
-            Clear Filters
-          </Button>
-          <Button type="submit" variant="primary" size="sm" icon={Search} loading={loading}>
-            Apply Filters
-          </Button>
-        </div>
-      </form>
+      </div>
 
       {/* Users Table */}
       <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc' }}>
-            Registered Users ({meta.totalItems || users.length})
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
-            <span>Rows per page:</span>
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              style={{
-                background: 'rgba(15, 23, 42, 0.8)',
-                color: '#f8fafc',
-                border: '1px solid var(--border-color)',
-                borderRadius: '6px',
-                padding: '2px 6px',
-                fontSize: '0.8rem'
-              }}
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
-        </div>
-
         {users.length === 0 && !loading ? (
           <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
             <Users size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
-            <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>No Users Found</h3>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '0.4rem' }}>No Matching Users</h3>
             <p style={{ color: 'var(--text-subtle)', fontSize: '0.85rem', maxWidth: '400px', margin: '0 auto' }}>
-              No registered user records match your selected filter criteria. Try resetting your search filters.
+              No registered user records match your active search filters.
             </p>
           </div>
         ) : (
@@ -400,60 +384,20 @@ export const AdminUsersPage = () => {
           </div>
         )}
 
-        {/* Pagination Controls */}
-        {meta.totalPages > 1 && (
-          <div style={{
-            padding: '0.85rem 1.25rem',
-            borderTop: '1px solid var(--border-color)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '0.75rem'
-          }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
-              Showing Page <strong>{meta.currentPage}</strong> of <strong>{meta.totalPages}</strong> ({meta.totalItems} total users)
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              >
-                <ChevronLeft size={14} /> Previous
-              </Button>
-
-              {Array.from({ length: meta.totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === meta.totalPages || Math.abs(p - page) <= 1)
-                .map((p, idx, arr) => (
-                  <React.Fragment key={p}>
-                    {idx > 0 && arr[idx - 1] !== p - 1 && (
-                      <span style={{ color: 'var(--text-subtle)', padding: '0 4px' }}>...</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setPage(p)}
-                      className={`btn btn-sm ${page === p ? 'btn-primary' : 'btn-secondary'}`}
-                      style={{ minWidth: '32px', padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
-                    >
-                      {p}
-                    </button>
-                  </React.Fragment>
-                ))}
-
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={page >= meta.totalPages || loading}
-                onClick={() => setPage((p) => Math.min(p + 1, meta.totalPages))}
-              >
-                Next <ChevronRight size={14} />
-              </Button>
-            </div>
-          </div>
-        )}
+        {/* Server-Side Pagination */}
+        <Pagination
+          currentPage={meta.currentPage || page}
+          totalPages={meta.totalPages || 1}
+          totalItems={meta.totalItems || users.length}
+          limit={limit}
+          onPageChange={(newPage) => setPage(newPage)}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+          loading={loading}
+          itemName="registered users"
+        />
       </div>
 
       {/* Add User Modal */}
