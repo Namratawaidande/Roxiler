@@ -1,0 +1,62 @@
+name: Store Rating Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-test:
+    name: Backend Test & Security Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Backend Dependencies
+        run: npm ci --prefix backend || npm install --prefix backend
+
+      - name: Run Backend Regression Test Suite
+        run: npm test --prefix backend
+        env:
+          NODE_ENV: test
+          JWT_SECRET: super_secure_ci_test_secret_key_32_characters_minimum
+
+      - name: Backend Security Audit
+        run: npm audit --prefix backend || true
+
+  frontend-build:
+    name: Frontend Build & Code Split Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install Frontend Dependencies
+        run: npm ci --prefix frontend || npm install --prefix frontend
+
+      - name: Build Production Frontend Bundle
+        run: npm run build --prefix frontend
+        env:
+          VITE_API_BASE_URL: /api/v1
+
+      - name: Verify Build Artifacts
+        run: |
+          test -f frontend/dist/index.html || exit 1
+          echo "Frontend Vite build completed and verified successfully."

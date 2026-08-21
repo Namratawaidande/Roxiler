@@ -124,10 +124,13 @@ const runComprehensiveBackendTestSuite = async () => {
     const logoutRes = await request('POST', '/api/v1/auth/logout', null, userToken);
     assert(logoutRes.statusCode === 200, 'Logout endpoint returns 200 OK acknowledgment');
 
-    // 1.8 Health & Readiness Check Endpoint
+    // 1.8 Health & Readiness Check Endpoints
     const healthRes = await request('GET', '/api/v1/health');
-    assert(healthRes.statusCode === 200, 'Health check endpoint returns 200 OK');
+    assert(healthRes.statusCode === 200, 'Health check liveness probe returns 200 OK');
     assert(healthRes.data?.data?.status === 'healthy' || healthRes.data?.status === 'healthy' || healthRes.data?.success === true, 'Health check returns operational status');
+
+    const readyRes = await request('GET', '/api/v1/health/ready');
+    assert(readyRes.statusCode === 200 || readyRes.statusCode === 503, 'Readiness probe returns valid HTTP status (200/503)');
 
     // 1.9 Observability & Correlation Headers
     assert(Boolean(healthRes.headers['x-request-id']), 'X-Request-Id correlation header attached to response');
