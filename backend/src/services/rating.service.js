@@ -16,11 +16,11 @@ class RatingService {
       }
 
       const res = await db.query(
-        `INSERT INTO ratings (user_id, store_id, rating, comment)
+        `INSERT INTO ratings (user_id, store_id, rating_value, comment)
          VALUES ($1, $2, $3, $4)
          ON CONFLICT (user_id, store_id) 
-         DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, updated_at = CURRENT_TIMESTAMP
-         RETURNING id, user_id, store_id, rating, comment, created_at, updated_at`,
+         DO UPDATE SET rating_value = EXCLUDED.rating_value, comment = EXCLUDED.comment, updated_at = CURRENT_TIMESTAMP
+         RETURNING id, user_id, store_id, rating_value, rating_value as rating, comment, created_at, updated_at`,
         [userId, storeId, rating, comment ? comment.trim() : null]
       );
 
@@ -31,6 +31,7 @@ class RatingService {
       id: Math.floor(Math.random() * 1000) + 10,
       user_id: userId,
       store_id: storeId,
+      rating_value: rating,
       rating,
       comment: comment || null,
       created_at: new Date().toISOString()
@@ -42,13 +43,14 @@ class RatingService {
    */
   async getStoreRatings(storeId, query = {}) {
     const { page, limit, offset } = parsePagination(query);
-    const { sortBy, order } = parseSort(query, ['rating', 'created_at'], 'created_at', 'DESC');
+    const { sortBy, order } = parseSort(query, ['rating', 'rating_value', 'created_at'], 'created_at', 'DESC');
+    const sortField = sortBy === 'rating' ? 'rating_value' : sortBy;
 
     if (db.getStatus().connected) {
       // Get aggregated summary
       const summaryRes = await db.query(
         `SELECT 
-           COALESCE(ROUND(AVG(rating)::numeric, 1), 0.0)::float as "averageRating",
+           COALESCE(ROUND(AVG(rating_value)::numeric, 1), 0.0)::float as "averageRating",
            COUNT(*)::int as "totalRatings"
          FROM ratings WHERE store_id = $1`,
         [storeId]
@@ -62,14 +64,15 @@ class RatingService {
           r.store_id,
           r.user_id,
           u.name as "userName",
-          r.rating,
+          r.rating_value as "ratingValue",
+          r.rating_value as rating,
           r.comment,
           r.created_at,
           r.updated_at
         FROM ratings r
         JOIN users u ON r.user_id = u.id
         WHERE r.store_id = $1
-        ORDER BY r.${sortBy} ${order}
+        ORDER BY r.${sortField} ${order}
         LIMIT $2 OFFSET $3
       `;
       const dataRes = await db.query(dataQuery, [storeId, limit, offset]);
@@ -91,6 +94,7 @@ class RatingService {
         store_id: parseInt(storeId, 10),
         user_id: 3,
         userName: 'John Customer',
+        rating_value: 5,
         rating: 5,
         comment: 'Outstanding customer experience and quick delivery.',
         created_at: new Date().toISOString()
@@ -100,6 +104,7 @@ class RatingService {
         store_id: parseInt(storeId, 10),
         user_id: 4,
         userName: 'Sarah Jenkins',
+        rating_value: 4,
         rating: 4,
         comment: 'Great items, clean ambiance.',
         created_at: new Date().toISOString()
@@ -119,7 +124,7 @@ class RatingService {
   async getUserRatingForStore(storeId, userId) {
     if (db.getStatus().connected) {
       const res = await db.query(
-        'SELECT id, store_id, user_id, rating, comment, created_at, updated_at FROM ratings WHERE store_id = $1 AND user_id = $2',
+        'SELECT id, store_id, user_id, rating_value, rating_value as rating, comment, created_at, updated_at FROM ratings WHERE store_id = $1 AND user_id = $2',
         [storeId, userId]
       );
       return res.rows[0] || null;

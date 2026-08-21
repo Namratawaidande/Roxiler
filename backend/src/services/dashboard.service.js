@@ -11,7 +11,7 @@ class DashboardService {
         db.query('SELECT COUNT(*)::int as count FROM users'),
         db.query('SELECT COUNT(*)::int as count FROM stores'),
         db.query('SELECT COUNT(*)::int as count FROM ratings'),
-        db.query('SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0.0)::float as avg FROM ratings'),
+        db.query('SELECT COALESCE(ROUND(AVG(rating_value)::numeric, 1), 0.0)::float as avg FROM ratings'),
         db.query('SELECT role, COUNT(*)::int as count FROM users GROUP BY role')
       ]);
 
@@ -61,7 +61,7 @@ class DashboardService {
            s.name,
            s.email,
            s.address,
-           COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0.0)::float as "averageRating",
+           COALESCE(ROUND(AVG(r.rating_value)::numeric, 1), 0.0)::float as "averageRating",
            COUNT(r.id)::int as "ratingCount"
          FROM stores s
          LEFT JOIN ratings r ON s.id = r.store_id
@@ -77,7 +77,8 @@ class DashboardService {
         const reviewsRes = await db.query(
           `SELECT 
              r.id,
-             r.rating,
+             r.rating_value as rating,
+             r.rating_value as "ratingValue",
              r.comment,
              r.created_at,
              s.name as "storeName",
@@ -131,7 +132,8 @@ class DashboardService {
       const ratingsRes = await db.query(
         `SELECT 
            r.id,
-           r.rating,
+           r.rating_value as rating,
+           r.rating_value as "ratingValue",
            r.comment,
            r.created_at,
            s.id as "storeId",

@@ -28,7 +28,7 @@ class StoreService {
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-      // Main aggregated query with average rating and count
+      // Main aggregated query with average rating and count using store_ratings_summary view or joined query
       const dataQuery = `
         SELECT 
           s.id,
@@ -38,7 +38,7 @@ class StoreService {
           s.owner_id,
           u.name as owner_name,
           s.created_at,
-          COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0.0)::float as "averageRating",
+          COALESCE(ROUND(AVG(r.rating_value)::numeric, 1), 0.0)::float as "averageRating",
           COUNT(r.id)::int as "ratingCount"
         FROM stores s
         LEFT JOIN users u ON s.owner_id = u.id
@@ -107,7 +107,7 @@ class StoreService {
           s.owner_id,
           u.name as owner_name,
           s.created_at,
-          COALESCE(ROUND(AVG(r.rating)::numeric, 1), 0.0)::float as "averageRating",
+          COALESCE(ROUND(AVG(r.rating_value)::numeric, 1), 0.0)::float as "averageRating",
           COUNT(r.id)::int as "ratingCount"
         FROM stores s
         LEFT JOIN users u ON s.owner_id = u.id
@@ -138,7 +138,6 @@ class StoreService {
    * Create a new store
    */
   async createStore({ name, email, address, ownerId }, requestingUser) {
-    // If requesting user is STORE_OWNER, ownerId is assigned to their own user ID
     const effectiveOwnerId = requestingUser.role === ROLES.SYSTEM_ADMIN ? (ownerId || requestingUser.id) : requestingUser.id;
 
     if (db.getStatus().connected) {
@@ -167,7 +166,6 @@ class StoreService {
   async updateStore(id, updateData, requestingUser) {
     const store = await this.getStoreById(id);
 
-    // Permission check: SYSTEM_ADMIN or the STORE_OWNER that owns this store
     if (requestingUser.role !== ROLES.SYSTEM_ADMIN && store.owner_id !== requestingUser.id) {
       throw new ForbiddenError('You do not have permission to modify this store.');
     }

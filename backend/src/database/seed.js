@@ -4,11 +4,11 @@ const { ROLES } = require('../constants/roles');
 const logger = require('../utils/logger');
 
 const runSeed = async () => {
-  logger.info('Starting database seeding...');
+  logger.info('Starting normalized database seeding...');
 
   const isConnected = await testConnection();
   if (!isConnected) {
-    logger.error('Cannot run seed: Database connection failed.');
+    logger.error('Cannot run seed: PostgreSQL database is offline or unreachable.');
     process.exit(1);
   }
 
@@ -17,7 +17,7 @@ const runSeed = async () => {
     const ownerPasswordHash = await hashPassword('Owner@123456');
     const userPasswordHash = await hashPassword('User@123456');
 
-    // 1. Insert or Update System Admin
+    // 1. Seed System Admin (Does not own a store)
     const adminRes = await pool.query(
       `INSERT INTO users (name, email, password_hash, address, role)
        VALUES ($1, $2, $3, $4, $5)
@@ -27,7 +27,7 @@ const runSeed = async () => {
     );
     logger.info(`Seeded Admin User: ${adminRes.rows[0].email} (Role: ${adminRes.rows[0].role})`);
 
-    // 2. Insert or Update Store Owner
+    // 2. Seed Store Owner (Associated with store)
     const ownerRes = await pool.query(
       `INSERT INTO users (name, email, password_hash, address, role)
        VALUES ($1, $2, $3, $4, $5)
@@ -38,7 +38,7 @@ const runSeed = async () => {
     const ownerId = ownerRes.rows[0].id;
     logger.info(`Seeded Store Owner: ${ownerRes.rows[0].email} (Role: ${ownerRes.rows[0].role})`);
 
-    // 3. Insert or Update Normal User
+    // 3. Seed Normal User (Can submit ratings)
     const userRes = await pool.query(
       `INSERT INTO users (name, email, password_hash, address, role)
        VALUES ($1, $2, $3, $4, $5)
@@ -49,32 +49,38 @@ const runSeed = async () => {
     const normalUserId = userRes.rows[0].id;
     logger.info(`Seeded Normal User: ${userRes.rows[0].email} (Role: ${userRes.rows[0].role})`);
 
-    // 4. Insert Sample Store
-    const storeRes = await pool.query(
+    // 4. Seed Stores
+    const store1Res = await pool.query(
       `INSERT INTO stores (name, email, address, owner_id)
        VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address, owner_id = EXCLUDED.owner_id
        RETURNING id, name, email`,
       ['Apex Digital & Electronics', 'contact@apexdigital.com', '101 Tech Avenue, Silicon Bay', ownerId]
     );
-    const storeId = storeRes.rows[0].id;
-    logger.info(`Seeded Store: ${storeRes.rows[0].name} (ID: ${storeId})`);
+    const store1Id = store1Res.rows[0].id;
+    logger.info(`Seeded Store 1: ${store1Res.rows[0].name} (ID: ${store1Id})`);
 
-    // 5. Insert Sample Rating
-    await pool.query(
-      `INSERT INTO ratings (user_id, store_id, rating, comment)
+    const store2Res = await pool.query(
+      `INSERT INTO stores (name, email, address, owner_id)
        VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, store_id) DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment`,
-      [normalUserId, storeId, 5, 'Outstanding service, authentic gadgets and swift support!']
+       ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, address = EXCLUDED.address, owner_id = EXCLUDED.owner_id
+       RETURNING id, name, email`,
+      ['Urban Gourmet Market', 'hello@urbangourmet.com', '220 Culinary Lane, Downtown', ownerId]
     );
-    logger.info(`Seeded initial 5-star rating for store ${storeId} by user ${normalUserId}`);
+    const store2Id = store2Res.rows[0].id;
+    logger.info(`Seeded Store 2: ${store2Res.rows[0].name} (ID: ${store2Id})`);
 
-    logger.info('✅ Database seeding finished successfully!');
-    logger.info('===============================================');
-    logger.info('Default Credentials Seeded:');
-    logger.info('  SYSTEM_ADMIN : admin@storerating.com / Admin@123456');
-    logger.info('  STORE_OWNER  : owner@storerating.com / Owner@123456');
-    logger.info('  NORMAL_USER  : user@storerating.com  / User@123456');
-    logger.info('===============================================');
+    // 5. Seed 5-star Rating from Normal User on Store 1
+    await pool.query(
+      `INSERT INTO ratings (user_id, store_id, rating_value, comment)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, store_id) 
+       DO UPDATE SET rating_value = EXCLUDED.rating_value, comment = EXCLUDED.comment, updated_at = CURRENT_TIMESTAMP`,
+      [normalUserId, store1Id, 5, 'Outstanding service, authentic gadgets and swift support!']
+    );
+    logger.info(`Seeded 5-star rating on store "${store1Res.rows[0].name}" by user "${userRes.rows[0].email}"`);
+
+    logger.info('✅ Normalized database seeding completed successfully!');
   } catch (err) {
     logger.error('Database seeding failed with error:', err.message);
     process.exit(1);
