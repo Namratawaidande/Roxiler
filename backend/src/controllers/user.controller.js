@@ -3,6 +3,15 @@ const { ApiResponse } = require('../utils/apiResponse');
 const userService = require('../services/user.service');
 
 /**
+ * Create User (Admin only)
+ * POST /api/v1/users
+ */
+const createUser = asyncHandler(async (req, res) => {
+  const result = await userService.createUser(req.body);
+  return ApiResponse.created(res, { user: result }, 'User created successfully by Administrator.');
+});
+
+/**
  * Get Paginated Users List (Admin)
  * GET /api/v1/users
  */
@@ -39,6 +48,7 @@ const deleteUser = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  createUser,
   getUsers,
   getUserById,
   updateUser,
