@@ -7,6 +7,7 @@ import { StoresPage } from '../pages/StoresPage';
 import { DashboardPreviewPage } from '../pages/DashboardPreviewPage';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
+import { AdminStoresPage } from '../pages/AdminStoresPage';
 import { StoreOwnerDashboardPage } from '../pages/StoreOwnerDashboardPage';
 import { NormalUserDashboardPage } from '../pages/NormalUserDashboardPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
@@ -37,6 +38,15 @@ export const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']}>
             <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/stores"
+        element={
+          <ProtectedRoute allowedRoles={['SYSTEM_ADMIN']}>
+            <AdminStoresPage />
           </ProtectedRoute>
         }
       />

@@ -360,13 +360,18 @@ export const AdminDashboardPage = () => {
       {/* TAB 3: STORE MANAGEMENT OVERSIGHT */}
       {activeTab === 'stores' && (
         <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               <Store size={18} color="#06b6d4" /> Store Catalog Oversight ({recentStores.length})
             </h2>
-            <Link to="/stores" className="btn btn-secondary btn-sm">
-              View Public Catalog
-            </Link>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Link to="/admin/stores" className="btn btn-primary btn-sm">
+                <Store size={14} /> Open Full Store Management
+              </Link>
+              <Link to="/stores" className="btn btn-secondary btn-sm">
+                View Public Catalog
+              </Link>
+            </div>
           </div>
 
           <div className="grid grid-3">
