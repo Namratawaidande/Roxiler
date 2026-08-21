@@ -73,7 +73,7 @@ export const AppRoutes = () => {
         path="/user"
         element={
           <ProtectedRoute allowedRoles={['NORMAL_USER']}>
-            <StoreListPage />
+            <NormalUserDashboardPage />
           </ProtectedRoute>
         }
       />

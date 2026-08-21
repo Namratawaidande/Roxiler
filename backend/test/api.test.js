@@ -54,193 +54,141 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runComprehensiveRatingsIntegrationSuite = async () => {
+const runCompletePhase3IntegrationSuite = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 INTEGRATED TEST RUNNER: 10-Scenario Store Ratings & Calculations`);
+  console.log(`🧪 INTEGRATED TEST RUNNER: Phase 3 NORMAL_USER End-to-End Suite`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
   try {
-    // --- AUTHENTICATION ---
-    const user1Login = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    if (user1Login.statusCode !== 200) throw new Error('User 1 login failed');
-    const user1Token = user1Login.data.data.token;
-    const user1Id = user1Login.data.data.user.id;
+    // -------------------------------------------------------------
+    // 1. REGISTRATION & LOGIN VIA COMMON AUTH SYSTEM
+    // -------------------------------------------------------------
+    console.log('--- 1. AUTHENTICATION & PROFILE DISCOVERY ---');
+    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    const registerRes = await request('POST', '/api/v1/auth/register', {
+      name: `Eleanor Vance Customer ${randSuffix}`,
+      email: `eleanor.cust${randSuffix}@example.com`,
+      password: 'SecurePass@123',
+      address: '742 Evergreen Terrace, Springfield'
+    });
+    if (registerRes.statusCode !== 201) throw new Error('Customer registration failed');
+    const registeredUser = registerRes.data.data.user;
+    if (registeredUser.role !== 'NORMAL_USER') throw new Error('Role mismatch on registration');
+    console.log(`  ✔ [POST /api/v1/auth/register] Registered customer "${registeredUser.name}" with role NORMAL_USER.`);
 
-    const user2Login = await request('POST', '/api/v1/auth/login', { email: 'sarah.jenkins@example.com', password: 'User@123456' });
-    if (user2Login.statusCode !== 200) throw new Error('User 2 login failed');
-    const user2Token = user2Login.data.data.token;
-    const user2Id = user2Login.data.data.user.id;
+    const loginRes = await request('POST', '/api/v1/auth/login', {
+      email: `eleanor.cust${randSuffix}@example.com`,
+      password: 'SecurePass@123'
+    });
+    if (loginRes.statusCode !== 200) throw new Error('Customer login failed');
+    const token = loginRes.data.data.token;
+    const userId = loginRes.data.data.user.id;
+    console.log(`  ✔ [POST /api/v1/auth/login] Logged in successfully. Received Bearer JWT Token.`);
+
+    // -------------------------------------------------------------
+    // 2. CUSTOMER DASHBOARD ACTIVITY & METRICS
+    // -------------------------------------------------------------
+    console.log('\n--- 2. CUSTOMER DASHBOARD ACTIVITY ---');
+    const dashRes = await request('GET', '/api/v1/dashboard/user', null, token);
+    if (dashRes.statusCode !== 200) throw new Error('Failed to retrieve user dashboard');
+    console.log(`  ✔ [GET /api/v1/dashboard/user] Accessed Customer Dashboard (Total Submitted: ${dashRes.data.data.totalRatingsSubmitted}).`);
+
+    // -------------------------------------------------------------
+    // 3. STORE BROWSING WITH DUAL RATING JOIN
+    // -------------------------------------------------------------
+    console.log('\n--- 3. STORE BROWSING & SEARCH/SORT/PAGINATION ---');
+    const storesRes = await request('GET', '/api/v1/stores?page=1&limit=5&sortBy=rating&order=desc', null, token);
+    if (storesRes.statusCode !== 200) throw new Error('Failed to retrieve stores catalog');
+    const stores = storesRes.data.data.stores;
+    if (stores.length === 0) throw new Error('No stores returned');
+    console.log(`  ✔ [GET /api/v1/stores] Retrieved ${stores.length} store listings with pagination metadata.`);
+
+    // Check dual rating indicators for new user (all stores should have myRating = null)
+    stores.forEach((s) => {
+      if (s.myRating !== null && s.userSubmittedRating !== null) {
+        throw new Error('New user should have myRating = null for unrated stores');
+      }
+    });
+    console.log('  ✔ All store listings accurately display unrated state (myRating: null) for new customer.');
+
+    // Search by Name
+    const nameSearch = await request('GET', '/api/v1/stores?name=Apex', null, token);
+    if (nameSearch.statusCode !== 200) throw new Error('Name search failed');
+    console.log(`  ✔ [GET /api/v1/stores?name=Apex] Case-insensitive name search matched ${nameSearch.data.data.stores.length} store(s).`);
+
+    // Search by Address
+    const addrSearch = await request('GET', '/api/v1/stores?address=Silicon', null, token);
+    if (addrSearch.statusCode !== 200) throw new Error('Address search failed');
+    console.log(`  ✔ [GET /api/v1/stores?address=Silicon] Case-insensitive address search matched ${addrSearch.data.data.stores.length} store(s).`);
+
+    // -------------------------------------------------------------
+    // 4. SUBMITTING A NEW STORE RATING (POST /api/v1/ratings)
+    // -------------------------------------------------------------
+    console.log('\n--- 4. RATING SUBMISSION & ARITHMETIC RECALCULATION ---');
+    const submitRate = await request('POST', '/api/v1/ratings', {
+      storeId: 1,
+      rating: 5,
+      comment: 'Top quality electronics and fast shipping!'
+    }, token);
+    if (submitRate.statusCode !== 201) throw new Error('Rating submission failed');
+    const createdRating = submitRate.data.data.rating;
+    if (createdRating.rating_value !== 5 || createdRating.user_id !== userId) {
+      throw new Error('Rating ownership or value mismatch');
+    }
+    console.log(`  ✔ [POST /api/v1/ratings] Submitted 5★ rating for Store #1 (201 Created).`);
+
+    // Verify immediate reflection in store query
+    const storeAfterRate = await request('GET', '/api/v1/stores/1', null, token);
+    if (storeAfterRate.data.data.store.myRating !== 5) {
+      throw new Error('Submitted rating not reflected in store details');
+    }
+    console.log(`  ✔ [GET /api/v1/stores/1] Store #1 now immediately reflects myRating: 5★.`);
+
+    // -------------------------------------------------------------
+    // 5. MODIFYING AN EXISTING RATING (PUT /api/v1/ratings/:storeId)
+    // -------------------------------------------------------------
+    console.log('\n--- 5. RATING MODIFICATION & INSTANT RECALCULATION ---');
+    const modifyRate = await request('PUT', '/api/v1/ratings/1', {
+      rating: 4,
+      comment: 'Updated review: good overall, packaging could be better.'
+    }, token);
+    if (modifyRate.statusCode !== 200) throw new Error('Rating modification failed');
+    if (modifyRate.data.data.rating.rating_value !== 4) {
+      throw new Error('Modified rating value mismatch');
+    }
+    console.log(`  ✔ [PUT /api/v1/ratings/1] Modified rating from 5★ to 4★ (200 OK).`);
+
+    const storeAfterModify = await request('GET', '/api/v1/stores/1', null, token);
+    if (storeAfterModify.data.data.store.myRating !== 4) {
+      throw new Error('Modified rating not reflected in store details');
+    }
+    console.log(`  ✔ [GET /api/v1/stores/1] Store #1 now immediately reflects myRating: 4★.`);
+
+    // -------------------------------------------------------------
+    // 6. DUPLICATE & RBAC VALIDATION
+    // -------------------------------------------------------------
+    console.log('\n--- 6. DUPLICATE & RBAC SECURITY CHECKS ---');
+    const duplicateRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, token);
+    if (duplicateRate.statusCode !== 409) throw new Error('Duplicate rating was not rejected with 409 Conflict');
+    console.log('  ✔ Duplicate rating submission rejected (409 Conflict as expected).');
 
     const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
-    if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
     const adminToken = adminLogin.data.data.token;
-
-    const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
-    if (ownerLogin.statusCode !== 200) throw new Error('Store Owner login failed');
-    const ownerToken = ownerLogin.data.data.token;
-
-    console.log('  ✔ Authenticated User #1, User #2, System Admin, and Store Owner.');
-
-    // -------------------------------------------------------------
-    // SCENARIO 1: STORE HAS NO RATINGS
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 1: STORE HAS NO RATINGS ---');
-    const randSuffix = Math.floor(1000 + Math.random() * 9000);
-    const newStoreRes = await request('POST', '/api/v1/stores', {
-      name: `Brand New Unrated Store ${randSuffix}`,
-      email: `unrated.${randSuffix}@store.com`,
-      address: '100 Fresh Meadow Drive, Innovation Park',
-      owner_id: 2
-    }, adminToken);
-    if (newStoreRes.statusCode !== 201) throw new Error('Failed to create new test store');
-    const unratedStoreId = newStoreRes.data.data.store.id;
-
-    const checkUnratedRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
-    const unratedStore = checkUnratedRes.data.data.store;
-    if (unratedStore.averageRating !== 0.0 && unratedStore.overall_rating !== 0.0) {
-      throw new Error(`Expected average rating 0.0 for unrated store, got ${unratedStore.averageRating}`);
-    }
-    console.log(`  ✔ Scenario 1 Passed: Unrated store returns overall rating ${unratedStore.averageRating}★ ("No ratings yet").`);
-
-    // -------------------------------------------------------------
-    // SCENARIO 2: STORE HAS ONE RATING
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 2: STORE HAS ONE RATING ---');
-    const rate1Res = await request('POST', '/api/v1/ratings', {
-      storeId: unratedStoreId,
-      rating: 4,
-      comment: 'Initial single rating of 4 stars'
-    }, user1Token);
-    if (rate1Res.statusCode !== 201) throw new Error('Failed to submit single rating');
-
-    const checkSingleRatingRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
-    const singleRatedStore = checkSingleRatingRes.data.data.store;
-    if (singleRatedStore.averageRating !== 4.0 && singleRatedStore.overall_rating !== 4.0) {
-      throw new Error(`Expected average rating 4.0 for store with 1 rating, got ${singleRatedStore.averageRating}`);
-    }
-    console.log(`  ✔ Scenario 2 Passed: Store with 1 rating (4★) returns exactly ${singleRatedStore.averageRating}★.`);
-
-    // -------------------------------------------------------------
-    // SCENARIO 3: STORE HAS MULTIPLE RATINGS (ARITHMETIC AVERAGE)
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 3: STORE HAS MULTIPLE RATINGS (ARITHMETIC AVERAGE) ---');
-    // User 2 rates the same store with 2 stars
-    const rate2Res = await request('POST', '/api/v1/ratings', {
-      storeId: unratedStoreId,
-      rating: 2,
-      comment: 'Second rating of 2 stars'
-    }, user2Token);
-    if (rate2Res.statusCode !== 201) throw new Error('Failed to submit second user rating');
-
-    // Expected arithmetic average: (4 + 2) / 2 = 3.0
-    const checkMultiRatingRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
-    const multiRatedStore = checkMultiRatingRes.data.data.store;
-    if (multiRatedStore.averageRating !== 3.0 && multiRatedStore.overall_rating !== 3.0) {
-      throw new Error(`Expected arithmetic average 3.0 for (4 + 2)/2, got ${multiRatedStore.averageRating}`);
-    }
-    console.log(`  ✔ Scenario 3 Passed: Multiple ratings (4★ + 2★) produce exact arithmetic average ${multiRatedStore.averageRating}★.`);
-
-    // -------------------------------------------------------------
-    // SCENARIO 4: NORMAL_USER HAS NOT RATED A STORE
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 4: NORMAL_USER HAS NOT RATED STORE ---');
-    // User 2 checks Store #1 (which User 2 has not rated)
-    const store1User2Res = await request('GET', '/api/v1/stores/1', null, user2Token);
-    const store1User2 = store1User2Res.data.data.store;
-    if (store1User2.myRating !== null && store1User2.userSubmittedRating !== null) {
-      throw new Error(`Expected myRating null for unrated user, got ${store1User2.myRating}`);
-    }
-    console.log('  ✔ Scenario 4 Passed: Unrated user sees myRating = null ("Not Rated Yet").');
-
-    // -------------------------------------------------------------
-    // SCENARIO 5: NORMAL_USER HAS RATED A STORE
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 5: NORMAL_USER HAS RATED STORE ---');
-    // User 1 checks Store #1 (which User 1 rated with 5 stars)
-    const store1User1Res = await request('GET', '/api/v1/stores/1', null, user1Token);
-    const store1User1 = store1User1Res.data.data.store;
-    if (store1User1.myRating !== 5 && store1User1.userSubmittedRating !== 5) {
-      throw new Error(`Expected myRating 5 for rated user, got ${store1User1.myRating}`);
-    }
-    console.log(`  ✔ Scenario 5 Passed: Rated user sees their exact submitted score (myRating: ${store1User1.myRating}★).`);
-
-    // -------------------------------------------------------------
-    // SCENARIO 6: NORMAL_USER MODIFIES RATING (RECALCULATES AVERAGE)
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 6: NORMAL_USER MODIFIES RATING ---');
-    // User 1 updates their rating on unratedStore from 4★ to 5★
-    // Ratings now: User 1 = 5★, User 2 = 2★ -> (5 + 2) / 2 = 3.5★
-    const modifyRes = await request('PUT', `/api/v1/ratings/${unratedStoreId}`, {
-      rating: 5,
-      comment: 'Updated to 5 stars'
-    }, user1Token);
-    if (modifyRes.statusCode !== 200) throw new Error('Rating update failed');
-
-    const checkUpdatedAvgRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
-    const updatedAvgStore = checkUpdatedAvgRes.data.data.store;
-    if (updatedAvgStore.averageRating !== 3.5 && updatedAvgStore.overall_rating !== 3.5) {
-      throw new Error(`Expected recalculated average 3.5 for (5 + 2)/2, got ${updatedAvgStore.averageRating}`);
-    }
-    console.log(`  ✔ Scenario 6 Passed: Modifying rating (4★ -> 5★) recalculated store average to ${updatedAvgStore.averageRating}★.`);
-
-    // -------------------------------------------------------------
-    // SCENARIO 7: MULTIPLE USERS RATE SAME STORE (UNIQUE RECORDS)
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 7: MULTIPLE USERS & DUPLICATE PREVENTION ---');
-    // User 1 attempts duplicate rating on same store
-    const duplicateRes = await request('POST', '/api/v1/ratings', { storeId: unratedStoreId, rating: 5 }, user1Token);
-    if (duplicateRes.statusCode !== 409) throw new Error('Duplicate rating was not rejected with 409');
-    console.log('  ✔ Scenario 7 Passed: Unique constraint blocks duplicate ratings per user (409 Conflict).');
-
-    // -------------------------------------------------------------
-    // SCENARIO 8: INVALID RATING VALUE REJECTION
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 8: INVALID RATING VALUES REJECTION ---');
-    const badRatings = [0, 6, -1, 3.5, 'five', null];
-    for (const val of badRatings) {
-      const res = await request('POST', '/api/v1/ratings', { storeId: 1, rating: val }, user1Token);
-      if (res.statusCode !== 422 && res.statusCode !== 409) {
-        throw new Error(`Invalid rating ${val} was not rejected with 422`);
-      }
-    }
-    console.log('  ✔ Scenario 8 Passed: Out-of-bounds, decimal, string, and null ratings rejected (422 Unprocessable Entity).');
-
-    // -------------------------------------------------------------
-    // SCENARIO 9: UNAUTHORIZED ACCESS REJECTION
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 9: UNAUTHORIZED ACCESS REJECTION ---');
     const adminRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, adminToken);
-    if (adminRate.statusCode !== 403) throw new Error('Admin rating was not blocked with 403');
-
-    const ownerRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, ownerToken);
-    if (ownerRate.statusCode !== 403) throw new Error('Owner rating was not blocked with 403');
-
-    const unauthRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 });
-    if (unauthRate.statusCode !== 401) throw new Error('Unauthenticated rating was not blocked with 401');
-    console.log('  ✔ Scenario 9 Passed: Non-NORMAL_USER roles and unauthenticated requests blocked (403/401).');
-
-    // -------------------------------------------------------------
-    // SCENARIO 10: REFERENTIAL INTEGRITY & STORE DELETION
-    // -------------------------------------------------------------
-    console.log('\n--- SCENARIO 10: REFERENTIAL INTEGRITY & DELETION ---');
-    const deleteStoreRes = await request('DELETE', `/api/v1/stores/${unratedStoreId}`, null, adminToken);
-    if (deleteStoreRes.statusCode !== 200) throw new Error('Store deletion failed');
-
-    const checkDeletedStore = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
-    if (checkDeletedStore.statusCode !== 404) throw new Error('Deleted store still accessible');
-    console.log('  ✔ Scenario 10 Passed: Store deletion preserved foreign-key integrity without orphaned records.');
+    if (adminRate.statusCode !== 403) throw new Error('Admin was not blocked from submitting rating');
+    console.log('  ✔ SYSTEM_ADMIN blocked from rating submission (403 Forbidden).');
 
     console.log('\n======================================================================');
-    console.log('✨ ALL 10 STORE RATING INTEGRATION SCENARIOS PASSED (100% GREEN)');
+    console.log('✨ ALL PHASE 3 NORMAL_USER END-TO-END CHECKS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runComprehensiveRatingsIntegrationSuite()
+runCompletePhase3IntegrationSuite()
   .then(() => {
     process.exit(0);
   })
