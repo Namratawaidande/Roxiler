@@ -22,6 +22,7 @@ import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { RateStoreModal } from '../components/stores/RateStoreModal';
+import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -196,9 +197,7 @@ export const NormalUserDashboardPage = () => {
                 {dashboardData.totalRatingsSubmitted}
               </div>
             </div>
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <CheckCircle2 size={22} color="#34d399" />
-            </div>
+            <GlassIcon icon={<CheckCircle2 size={18} />} color="green" size="sm" label="Submitted" />
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             Total merchant reviews submitted by your account
@@ -213,9 +212,7 @@ export const NormalUserDashboardPage = () => {
                 {meta.totalItems || stores.length}
               </div>
             </div>
-            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <Store size={22} color="#818cf8" />
-            </div>
+            <GlassIcon icon={<Store size={18} />} color="blue" size="sm" label="Stores" />
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             Verified platform merchants open for community ratings
@@ -230,9 +227,7 @@ export const NormalUserDashboardPage = () => {
                 {dashboardData.totalRatingsSubmitted > 0 ? 'Active Reviewer' : 'New Member'}
               </div>
             </div>
-            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <Sparkles size={22} color="#fbbf24" />
-            </div>
+            <GlassIcon icon={<Sparkles size={18} />} color="amber" size="sm" label="Status" />
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             {dashboardData.totalRatingsSubmitted > 0 ? 'Your reviews are helping the community' : 'Submit your first store rating below'}

@@ -8,6 +8,7 @@ import { TextareaField } from '../components/forms/TextareaField';
 import { PasswordStrengthMeter } from '../components/forms/PasswordStrengthMeter';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
+import { GlassIcon } from '../components/common/GlassIcons';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -47,12 +48,12 @@ export const RegisterPage = () => {
   };
 
   const handleFillSample = () => {
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
     setFormData({
-      name: 'Alexander Montgomery Wright',
-      email: `alex.wright${randomSuffix}@example.com`,
-      password: 'SecureUser@123',
-      address: '742 Evergreen Terrace, Sector 4, Springfield'
+      name: `Demo User ${randomNum} Platform`,
+      email: `customer${randomNum}@example.com`,
+      password: 'User@123456',
+      address: '742 Evergreen Terrace, Sector 4, Silicon Valley'
     });
     setError(null);
   };
@@ -61,32 +62,16 @@ export const RegisterPage = () => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
-
-    // Client-side pre-validation
-    if (!isNameValid) {
-      setError(`Full Name must be between 20 and 60 characters long (currently ${nameLength} characters).`);
-      return;
-    }
-
-    if (!isPasswordFullyValid) {
-      setError('Password must be 8-16 characters with at least one uppercase letter and one special character.');
-      return;
-    }
-
-    if (!isAddressValid) {
-      setError('Address cannot exceed 400 characters.');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const response = await authService.register(formData);
       if (response?.data?.token && response?.data?.user) {
+        setSuccessMsg('Account registered successfully! Logging you in...');
         login(response.data.user, response.data.token);
-        setSuccessMsg('Normal User account registered successfully! Redirecting...');
+
         setTimeout(() => {
-          navigate('/user', { replace: true });
+          navigate('/stores', { replace: true });
         }, 800);
       }
     } catch (err) {
@@ -101,18 +86,8 @@ export const RegisterPage = () => {
       <div className="glass-card">
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '0.75rem',
-            boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
-          }}>
-            <UserPlus size={24} color="#fff" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+            <GlassIcon icon={<UserPlus size={22} />} color="green" size="lg" label="Register" />
           </div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Create User Account</h1>
           <p style={{ fontSize: '0.85rem' }}>

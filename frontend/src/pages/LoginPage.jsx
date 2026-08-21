@@ -6,6 +6,7 @@ import { authService } from '../services/authService';
 import { InputField } from '../components/forms/InputField';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
+import { GlassIcon } from '../components/common/GlassIcons';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -97,18 +98,8 @@ export const LoginPage = () => {
       <div className="glass-card">
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '1rem',
-            boxShadow: '0 0 25px rgba(99, 102, 241, 0.45)'
-          }}>
-            <LogIn size={24} color="#fff" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+            <GlassIcon icon={<LogIn size={22} />} color="indigo" size="lg" label="Sign In" />
           </div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.35rem' }}>Unified Portal Login</h1>
           <p style={{ fontSize: '0.875rem' }}>Single sign-in for Administrators, Store Owners & Users</p>

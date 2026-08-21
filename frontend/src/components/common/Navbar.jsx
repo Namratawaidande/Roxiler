@@ -4,6 +4,7 @@ import { Star, Store, User, LogOut, LogIn, UserPlus, Shield, ShoppingBag, KeyRou
 import { useAuth } from '../../context/AuthContext';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 import { Button } from './Button';
+import { GlassIcon } from './GlassIcons';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout, isAdmin, isStoreOwner, isNormalUser } = useAuth();
@@ -64,18 +65,7 @@ export const Navbar = () => {
       }}>
         {/* Brand Logo */}
         <Link to={getHomeLink()} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none' }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)'
-          }}>
-            <Star size={20} color="#fff" fill="#fff" />
-          </div>
+          <GlassIcon icon={<Star size={18} fill="#fff" />} color="indigo" size="sm" style={{ pointerEvents: 'none' }} />
           <div>
             <div style={{
               fontFamily: 'var(--font-heading)',

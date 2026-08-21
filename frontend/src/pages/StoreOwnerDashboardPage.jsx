@@ -27,6 +27,7 @@ import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { ChangePasswordModal } from '../components/auth/ChangePasswordModal';
+import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -264,17 +265,7 @@ export const StoreOwnerDashboardPage = () => {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
-              padding: '16px',
-              borderRadius: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)'
-            }}>
-              <Building size={32} color="#ffffff" />
-            </div>
+            <GlassIcon icon={<Building size={26} />} color="indigo" size="lg" label="Store" />
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -332,9 +323,7 @@ export const StoreOwnerDashboardPage = () => {
                 <span style={{ fontSize: '1rem', color: 'var(--text-subtle)', fontWeight: 400 }}>/ 5.0</span>
               </div>
             </div>
-            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <Award size={22} color="#fbbf24" />
-            </div>
+            <GlassIcon icon={<Award size={18} />} color="amber" size="sm" label="Rating" />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.75rem' }}>
@@ -361,9 +350,7 @@ export const StoreOwnerDashboardPage = () => {
                 {totalRatingsCount}
               </div>
             </div>
-            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <Users size={22} color="#818cf8" />
-            </div>
+            <GlassIcon icon={<Users size={18} />} color="blue" size="sm" label="Reviews" />
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.75rem' }}>
             Verified customer ratings submitted for your store
@@ -379,9 +366,7 @@ export const StoreOwnerDashboardPage = () => {
                 {satisfactionRate}%
               </div>
             </div>
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '10px', borderRadius: '12px' }}>
-              <TrendingUp size={22} color="#34d399" />
-            </div>
+            <GlassIcon icon={<TrendingUp size={18} />} color="green" size="sm" label="Satisfaction" />
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.75rem' }}>
             Percentage of 4-star and 5-star customer reviews

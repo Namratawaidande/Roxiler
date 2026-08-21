@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
+import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
 import api from '../services/api';
 
 export const AdminDashboardPage = () => {
@@ -90,9 +91,7 @@ export const AdminDashboardPage = () => {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               TOTAL USERS
             </span>
-            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '6px', borderRadius: '8px' }}>
-              <Users size={18} color="#818cf8" />
-            </div>
+            <GlassIcon icon={<Users size={16} />} color="indigo" size="sm" label="Users" />
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalUsers ?? 0}
@@ -108,9 +107,7 @@ export const AdminDashboardPage = () => {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               TOTAL STORES
             </span>
-            <div style={{ background: 'rgba(6, 182, 212, 0.15)', padding: '6px', borderRadius: '8px' }}>
-              <Building size={18} color="#06b6d4" />
-            </div>
+            <GlassIcon icon={<Building size={16} />} color="cyan" size="sm" label="Stores" />
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalStores ?? 0}
@@ -126,9 +123,7 @@ export const AdminDashboardPage = () => {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               SUBMITTED RATINGS
             </span>
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '6px', borderRadius: '8px' }}>
-              <Star size={18} color="#10b981" />
-            </div>
+            <GlassIcon icon={<Star size={16} />} color="green" size="sm" label="Ratings" />
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalRatings ?? 0}
@@ -144,9 +139,7 @@ export const AdminDashboardPage = () => {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               AVG PLATFORM SCORE
             </span>
-            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '6px', borderRadius: '8px' }}>
-              <BarChart3 size={18} color="#f59e0b" />
-            </div>
+            <GlassIcon icon={<BarChart3 size={16} />} color="orange" size="sm" label="Score" />
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Star size={24} fill="#fbbf24" />
