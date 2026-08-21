@@ -46,6 +46,15 @@ const startServer = () => {
     process.on('SIGTERM', () => handleShutdown('SIGTERM'));
     process.on('SIGINT', () => handleShutdown('SIGINT'));
 
+    process.on('unhandledRejection', (reason) => {
+      logger.error('Unhandled Promise Rejection caught:', reason?.message || reason);
+    });
+
+    process.on('uncaughtException', (err) => {
+      logger.error('Uncaught Exception fatal crash intercepted:', err.message, { stack: err.stack });
+      handleShutdown('UNCAUGHT_EXCEPTION');
+    });
+
   } catch (error) {
     logger.error('Fatal error during backend server startup:', error.message);
     process.exit(1);

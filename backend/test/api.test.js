@@ -124,6 +124,15 @@ const runComprehensiveBackendTestSuite = async () => {
     const logoutRes = await request('POST', '/api/v1/auth/logout', null, userToken);
     assert(logoutRes.statusCode === 200, 'Logout endpoint returns 200 OK acknowledgment');
 
+    // 1.8 Health & Readiness Check Endpoint
+    const healthRes = await request('GET', '/api/v1/health');
+    assert(healthRes.statusCode === 200, 'Health check endpoint returns 200 OK');
+    assert(healthRes.data?.data?.status === 'healthy' || healthRes.data?.status === 'healthy' || healthRes.data?.success === true, 'Health check returns operational status');
+
+    // 1.9 Observability & Correlation Headers
+    assert(Boolean(healthRes.headers['x-request-id']), 'X-Request-Id correlation header attached to response');
+    assert(Boolean(healthRes.headers['x-response-time']), 'X-Response-Time performance latency header attached to response');
+
     // =============================================================
     // SUITE 2: AUTHORIZATION & CROSS-ROLE BARRIERS (RBAC & IDOR)
     // =============================================================

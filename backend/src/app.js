@@ -6,10 +6,14 @@ const env = require('./config/env');
 const routes = require('./routes');
 const { notFoundHandler, errorHandler } = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
+const { requestIdMiddleware } = require('./middleware/requestId.middleware');
 
 const app = express();
 
-// 1. Security Headers Middleware
+// 1. Request Correlation ID & Latency Tracking
+app.use(requestIdMiddleware);
+
+// 2. Security Headers Middleware
 app.use(helmet());
 
 // 2. Cross-Origin Resource Sharing (CORS) Configuration
