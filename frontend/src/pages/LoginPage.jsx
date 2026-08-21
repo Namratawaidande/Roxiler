@@ -216,7 +216,7 @@ export const LoginPage = () => {
             loading={loading}
             style={{ width: '100%', marginTop: '0.5rem' }}
           >
-            Sign In with JWT
+            Sign In
           </Button>
         </form>
 
