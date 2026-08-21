@@ -83,26 +83,42 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(5, 8, 16, 0.85)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem'
-    }}>
-      <div className="glass-card" style={{
-        width: '100%',
-        maxWidth: '520px',
-        position: 'relative',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
-      }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(2, 6, 23, 0.90)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+        padding: '1.5rem',
+        overflowY: 'auto'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '520px',
+          background: '#0d1322',
+          border: '1px solid rgba(251, 191, 36, 0.35)',
+          borderRadius: '16px',
+          padding: '1.75rem',
+          position: 'relative',
+          boxShadow: '0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 45px rgba(251, 191, 36, 0.15)',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto',
+          margin: 'auto'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

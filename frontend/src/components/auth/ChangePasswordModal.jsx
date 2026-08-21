@@ -83,26 +83,42 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(5, 8, 16, 0.85)',
-      backdropFilter: 'blur(8px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '1rem'
-    }}>
-      <div className="glass-card" style={{
-        width: '100%',
-        maxWidth: '480px',
-        position: 'relative',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
-      }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(2, 6, 23, 0.90)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+        padding: '1.5rem',
+        overflowY: 'auto'
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '490px',
+          background: '#0d1322',
+          border: '1px solid rgba(99, 102, 241, 0.35)',
+          borderRadius: '16px',
+          padding: '1.75rem',
+          position: 'relative',
+          boxShadow: '0 25px 60px -10px rgba(0, 0, 0, 0.95), 0 0 45px rgba(99, 102, 241, 0.20)',
+          maxHeight: 'calc(100vh - 3rem)',
+          overflowY: 'auto',
+          margin: 'auto'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{
           display: 'flex',
@@ -110,7 +126,7 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
           alignItems: 'center',
           marginBottom: '1.25rem',
           paddingBottom: '0.75rem',
-          borderBottom: '1px solid var(--border-color)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.10)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{
@@ -119,13 +135,14 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
               borderRadius: '10px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)'
             }}>
               <KeyRound size={18} color="#ffffff" />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Change Password</h2>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-subtle)', margin: 0 }}>
+              <h2 style={{ fontSize: '1.25rem', margin: 0, color: '#f8fafc', fontWeight: 700 }}>Reset Password</h2>
+              <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '2px 0 0 0' }}>
                 Update your account password securely
               </p>
             </div>
@@ -133,9 +150,20 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', padding: '4px' }}
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -145,7 +173,7 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Current Password */}
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Current Password</label>
+            <label className="form-label" style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Current Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showCurrent ? 'text' : 'password'}
@@ -156,7 +184,12 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                 onChange={handleChange}
                 disabled={loading}
                 required
-                style={{ paddingRight: '2.5rem' }}
+                style={{
+                  background: '#070b16',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#f8fafc',
+                  paddingRight: '2.5rem'
+                }}
               />
               <button
                 type="button"
@@ -168,8 +201,9 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-subtle)',
-                  cursor: 'pointer'
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px'
                 }}
               >
                 {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -179,7 +213,7 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
 
           {/* New Password */}
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>New Password</label>
+            <label className="form-label" style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>New Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showNew ? 'text' : 'password'}
@@ -190,7 +224,12 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                 onChange={handleChange}
                 disabled={loading}
                 required
-                style={{ paddingRight: '2.5rem' }}
+                style={{
+                  background: '#070b16',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#f8fafc',
+                  paddingRight: '2.5rem'
+                }}
               />
               <button
                 type="button"
@@ -202,8 +241,9 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-subtle)',
-                  cursor: 'pointer'
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px'
                 }}
               >
                 {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -213,7 +253,7 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
 
           {/* Confirm New Password */}
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Confirm New Password</label>
+            <label className="form-label" style={{ fontSize: '0.8rem', color: '#cbd5e1', fontWeight: 600 }}>Confirm New Password</label>
             <div style={{ position: 'relative' }}>
               <input
                 type={showConfirm ? 'text' : 'password'}
@@ -224,7 +264,12 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                 onChange={handleChange}
                 disabled={loading}
                 required
-                style={{ paddingRight: '2.5rem' }}
+                style={{
+                  background: '#070b16',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#f8fafc',
+                  paddingRight: '2.5rem'
+                }}
               />
               <button
                 type="button"
@@ -236,8 +281,9 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-subtle)',
-                  cursor: 'pointer'
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px'
                 }}
               >
                 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -247,32 +293,32 @@ export const ChangePasswordModal = ({ isOpen, onClose, onPasswordChanged }) => {
 
           {/* Real-time Requirement Checklist */}
           <div style={{
-            background: 'rgba(15, 23, 42, 0.6)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            padding: '0.75rem',
-            fontSize: '0.75rem',
+            background: '#070b16',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            borderRadius: '10px',
+            padding: '0.85rem 1rem',
+            fontSize: '0.78rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.35rem'
+            gap: '0.4rem'
           }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-subtle)', marginBottom: '2px' }}>
+            <div style={{ fontWeight: 700, color: '#94a3b8', marginBottom: '2px', letterSpacing: '0.02em' }}>
               Password Security Rules:
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isLengthValid ? '#34d399' : 'var(--text-muted)' }}>
-              {isLengthValid ? <Check size={13} color="#34d399" /> : <X size={13} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isLengthValid ? '#34d399' : '#64748b', fontWeight: isLengthValid ? 600 : 400 }}>
+              {isLengthValid ? <Check size={14} color="#34d399" /> : <X size={14} />}
               8 to 16 characters in length
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: hasUppercase ? '#34d399' : 'var(--text-muted)' }}>
-              {hasUppercase ? <Check size={13} color="#34d399" /> : <X size={13} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hasUppercase ? '#34d399' : '#64748b', fontWeight: hasUppercase ? 600 : 400 }}>
+              {hasUppercase ? <Check size={14} color="#34d399" /> : <X size={14} />}
               At least one uppercase letter (A–Z)
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: hasSpecial ? '#34d399' : 'var(--text-muted)' }}>
-              {hasSpecial ? <Check size={13} color="#34d399" /> : <X size={13} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hasSpecial ? '#34d399' : '#64748b', fontWeight: hasSpecial ? 600 : 400 }}>
+              {hasSpecial ? <Check size={14} color="#34d399" /> : <X size={14} />}
               At least one special character (!@#$%^&*...)
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isMatching ? '#34d399' : 'var(--text-muted)' }}>
-              {isMatching ? <Check size={13} color="#34d399" /> : <X size={13} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: isMatching ? '#34d399' : '#64748b', fontWeight: isMatching ? 600 : 400 }}>
+              {isMatching ? <Check size={14} color="#34d399" /> : <X size={14} />}
               New password matches confirmation
             </div>
           </div>
