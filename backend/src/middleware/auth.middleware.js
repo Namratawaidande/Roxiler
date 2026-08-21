@@ -15,13 +15,26 @@ const authenticate = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
 
+  if (!token || token.trim() === '') {
+    throw new UnauthorizedError('Authentication Bearer token cannot be empty.');
+  }
+
   try {
     const decoded = verifyToken(token);
+    if (!decoded || !decoded.id || !decoded.role) {
+      throw new UnauthorizedError('Invalid authentication token: missing required user claims.');
+    }
     req.user = decoded;
     next();
   } catch (err) {
+    if (err instanceof UnauthorizedError) {
+      throw err;
+    }
     if (err.name === 'TokenExpiredError') {
       throw new UnauthorizedError('Authentication token has expired. Please log in again.');
+    }
+    if (err.name === 'JsonWebTokenError') {
+      throw new UnauthorizedError(`Authentication failed: ${err.message}.`);
     }
     throw new UnauthorizedError('Invalid authentication token signature or malformed token.');
   }

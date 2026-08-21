@@ -39,9 +39,21 @@ api.interceptors.response.use(
       raw: error
     };
 
-    // If unauthorized, optional token clearing
+    // Handle 401 Unauthorized token expiry
     if (error.response?.status === 401) {
-      // Don't auto-redirect immediately during health checks
+      const url = error.config?.url || '';
+      const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/register');
+      
+      if (!isAuthAttempt && typeof window !== 'undefined') {
+        const currentToken = localStorage.getItem('store_rating_token');
+        if (currentToken) {
+          localStorage.removeItem('store_rating_token');
+          // If on a protected page, navigate to login with session expired notice
+          if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+            window.location.href = '/login?expired=true';
+          }
+        }
+      }
     }
 
     return Promise.reject(customError);

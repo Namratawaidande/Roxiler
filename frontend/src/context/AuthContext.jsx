@@ -14,8 +14,9 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           const response = await authService.getMe();
-          if (response?.data?.user) {
-            setUser(response.data.user);
+          const userData = response?.data?.user || response?.data;
+          if (userData && userData.id) {
+            setUser(userData);
           }
         } catch (err) {
           console.warn('Session expired or token invalid. Clearing session:', err.message);

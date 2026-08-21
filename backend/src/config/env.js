@@ -10,12 +10,19 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 const validateEnv = () => {
   const warnings = [];
 
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-    warnings.push('JWT_SECRET is either not set or shorter than 16 characters. A secure 32+ char key is recommended in production.');
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'super_secret_jwt_key_store_rating_platform_2026' || process.env.JWT_SECRET.length < 32) {
+      console.error('FATAL SECURITY ERROR: A secure, unique JWT_SECRET of at least 32 characters must be set in production environment variables.');
+      process.exit(1);
+    }
+  } else {
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
+      warnings.push('JWT_SECRET is either not set or shorter than 16 characters. A secure 32+ char key is recommended.');
+    }
   }
 
-  if (!process.env.DB_NAME) {
-    warnings.push('DB_NAME is not set in environment. Defaulting to "store_rating_db".');
+  if (!process.env.DB_NAME && !process.env.DATABASE_URL) {
+    warnings.push('DB_NAME or DATABASE_URL is not set in environment. Defaulting to "store_rating_db".');
   }
 
   if (warnings.length > 0 && process.env.NODE_ENV !== 'test') {
