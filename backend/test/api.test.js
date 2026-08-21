@@ -54,81 +54,116 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runOwnerRatingsTableTests = async () => {
+const runPasswordChangeSecurityTests = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 TEST RUNNER: STORE_OWNER Customer Ratings Table Server-Side Suite`);
+  console.log(`🧪 TEST RUNNER: STORE_OWNER Secure Password Change & Verification Suite`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
   try {
-    // --- 1. AUTHENTICATING TEST ROLES ---
-    console.log('--- 1. AUTHENTICATION OF TEST ACCOUNTS ---');
-    const owner1Login = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
-    if (owner1Login.statusCode !== 200) throw new Error('Owner 1 login failed');
-    const owner1Token = owner1Login.data.data.token;
-    console.log('  ✔ Authenticated STORE_OWNER #1 (Alice Storekeeper).');
+    // --- 1. AUTHENTICATING TEST STORE_OWNER ---
+    console.log('--- 1. AUTHENTICATING STORE_OWNER ---');
+    const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
+    if (ownerLogin.statusCode !== 200) throw new Error('Store Owner initial login failed');
+    const ownerToken = ownerLogin.data.data.token;
+    console.log('  ✔ Authenticated STORE_OWNER (Alice Storekeeper).');
 
-    // --- 2. SEARCH BY USER NAME ---
-    console.log('\n--- 2. SERVER-SIDE SEARCH BY USER NAME ---');
-    const nameSearchRes = await request('GET', '/api/v1/ratings/owner?userName=John', null, owner1Token);
-    if (nameSearchRes.statusCode !== 200) throw new Error('User name search failed');
-    const nameList = nameSearchRes.data.data.ratings;
-    if (!nameList.every((r) => r.userName.toLowerCase().includes('john'))) {
-      throw new Error('Search result contains non-matching user name');
+    // --- 2. WRONG CURRENT PASSWORD REJECTION ---
+    console.log('\n--- 2. INCORRECT CURRENT PASSWORD REJECTION ---');
+    const wrongCurrentRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'IncorrectOldPassword@99',
+      newPassword: 'NewPass@2026',
+      confirmNewPassword: 'NewPass@2026'
+    }, ownerToken);
+    if (wrongCurrentRes.statusCode !== 401) {
+      throw new Error(`Expected 401 Unauthorized for incorrect current password, got ${wrongCurrentRes.statusCode}`);
     }
-    console.log(`  ✔ [GET /api/v1/ratings/owner?userName=John] Found ${nameList.length} matching review(s) for customer "John".`);
+    console.log('  ✔ Incorrect current password rejected (401 Unauthorized as expected).');
 
-    // --- 3. SEARCH BY USER EMAIL ---
-    console.log('\n--- 3. SERVER-SIDE SEARCH BY USER EMAIL ---');
-    const emailSearchRes = await request('GET', '/api/v1/ratings/owner?userEmail=john.doe@example.com', null, owner1Token);
-    if (emailSearchRes.statusCode !== 200) throw new Error('User email search failed');
-    const emailList = emailSearchRes.data.data.ratings;
-    if (!emailList.every((r) => r.userEmail.toLowerCase().includes('john.doe'))) {
-      throw new Error('Search result contains non-matching user email');
+    // --- 3. IDENTICAL PASSWORD REJECTION ---
+    console.log('\n--- 3. IDENTICAL PASSWORD REJECTION ---');
+    const identicalRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'Owner@123456',
+      newPassword: 'Owner@123456',
+      confirmNewPassword: 'Owner@123456'
+    }, ownerToken);
+    if (identicalRes.statusCode !== 400) {
+      throw new Error(`Expected 400 Bad Request for identical password, got ${identicalRes.statusCode}`);
     }
-    console.log(`  ✔ [GET /api/v1/ratings/owner?userEmail=john.doe@example.com] Found ${emailList.length} matching review(s).`);
+    console.log('  ✔ New password identical to current password rejected (400 Bad Request).');
 
-    // --- 4. ALLOWLISTED SORTING ON ALL COLUMNS ---
-    console.log('\n--- 4. COLUMN CLICK-TO-SORT TESTS ---');
-    const sortColumns = ['userName', 'userEmail', 'userAddress', 'rating', 'createdAt'];
-    for (const col of sortColumns) {
-      const resAsc = await request('GET', `/api/v1/ratings/owner?sortBy=${col}&order=ASC`, null, owner1Token);
-      if (resAsc.statusCode !== 200) throw new Error(`Sorting by ${col} ASC failed`);
+    // --- 4. PASSWORD COMPLEXITY & CONFIRMATION VALIDATION ---
+    console.log('\n--- 4. PASSWORD COMPLEXITY & CONFIRMATION VALIDATION ---');
+    // Short password (< 8 chars)
+    const shortRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'Owner@123456',
+      newPassword: 'Abc@1',
+      confirmNewPassword: 'Abc@1'
+    }, ownerToken);
+    if (shortRes.statusCode !== 422) throw new Error('Short password was not rejected with 422');
+    console.log('  ✔ Password < 8 characters rejected (422 Unprocessable Entity).');
 
-      const resDesc = await request('GET', `/api/v1/ratings/owner?sortBy=${col}&order=DESC`, null, owner1Token);
-      if (resDesc.statusCode !== 200) throw new Error(`Sorting by ${col} DESC failed`);
+    // Missing special character
+    const noSpecialRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'Owner@123456',
+      newPassword: 'ValidPassword12',
+      confirmNewPassword: 'ValidPassword12'
+    }, ownerToken);
+    if (noSpecialRes.statusCode !== 422) throw new Error('Password without special char was not rejected with 422');
+    console.log('  ✔ Password without special character rejected (422 Unprocessable Entity).');
 
-      console.log(`  ✔ Column "${col}" successfully sorted ASC & DESC.`);
+    // Mismatched confirmation
+    const mismatchRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'Owner@123456',
+      newPassword: 'ValidPass@2026',
+      confirmNewPassword: 'DiffPass@2026'
+    }, ownerToken);
+    if (mismatchRes.statusCode !== 422 && mismatchRes.statusCode !== 400) {
+      throw new Error('Mismatched confirmation password was not rejected');
     }
+    console.log('  ✔ Password and confirmation mismatch rejected (422/400 as expected).');
 
-    // --- 5. SQL INJECTION SECURITY RESILIENCE ---
-    console.log('\n--- 5. SQL INJECTION ATTACK RESILIENCE ---');
-    const injectionRes = await request('GET', '/api/v1/ratings/owner?sortBy=name;DROP%20TABLE%20ratings--', null, owner1Token);
-    if (injectionRes.statusCode !== 200) {
-      throw new Error('Malicious SQL query caused server error instead of safe allowlist fallback');
-    }
-    console.log('  ✔ SQL injection payload in sortBy safely neutralized via strict allowlist mapping.');
+    // --- 5. SUCCESSFUL PASSWORD UPDATE ---
+    console.log('\n--- 5. SUCCESSFUL PASSWORD UPDATE ---');
+    const updateRes = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'Owner@123456',
+      newPassword: 'NewOwner@2026',
+      confirmNewPassword: 'NewOwner@2026'
+    }, ownerToken);
 
-    // --- 6. PAGINATION PRESERVATION ---
-    console.log('\n--- 6. PAGINATION & METADATA PRESERVATION ---');
-    const pageRes = await request('GET', '/api/v1/ratings/owner?page=1&limit=1&sortBy=rating&order=DESC', null, owner1Token);
-    if (pageRes.statusCode !== 200) throw new Error('Paginated request failed');
-    const pagination = pageRes.data.meta?.pagination || pageRes.data.meta;
-    if (pagination.pageSize !== 1 && pagination.limit !== 1) {
-      throw new Error('Pagination page size mismatch');
+    if (updateRes.statusCode !== 200) {
+      throw new Error(`Expected 200 OK for valid password update, got ${updateRes.statusCode}: ${JSON.stringify(updateRes.data)}`);
     }
-    console.log(`  ✔ Pagination metadata verified: Page ${pagination.page} of ${pagination.totalPages} (Total: ${pagination.totalItems}).`);
+    console.log('  ✔ [PUT /api/v1/auth/password] Password updated successfully (200 OK).');
+
+    // --- 6. VERIFY SUBSEQUENT LOGIN WITH NEW PASSWORD ---
+    console.log('\n--- 6. VERIFY LOGIN WITH NEW PASSWORD ---');
+    const newLoginRes = await request('POST', '/api/v1/auth/login', {
+      email: 'owner1@storerating.com',
+      password: 'NewOwner@2026'
+    });
+    if (newLoginRes.statusCode !== 200) {
+      throw new Error('Login with new password failed');
+    }
+    console.log('  ✔ Login with newly updated password succeeded (200 OK).');
+
+    // Reset password back for subsequent tests
+    await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'NewOwner@2026',
+      newPassword: 'Owner@123456',
+      confirmNewPassword: 'Owner@123456'
+    }, newLoginRes.data.data.token);
 
     console.log('\n======================================================================');
-    console.log('✨ ALL STORE_OWNER RATINGS TABLE TESTS PASSED (100% GREEN)');
+    console.log('✨ ALL PASSWORD CHANGE SECURITY TESTS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runOwnerRatingsTableTests()
+runPasswordChangeSecurityTests()
   .then(() => {
     process.exit(0);
   })

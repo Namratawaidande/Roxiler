@@ -46,7 +46,16 @@ const updatePasswordValidator = [
     .notEmpty().withMessage('New password is required.')
     .isLength({ min: 8, max: 16 }).withMessage('New password must be between 8 and 16 characters long.')
     .matches(/[A-Z]/).withMessage('New password must contain at least one uppercase letter.')
-    .matches(/[!@#$%^&*(),.?":{}|<>_]/).withMessage('New password must contain at least one special character.')
+    .matches(/[!@#$%^&*(),.?":{}|<>_]/).withMessage('New password must contain at least one special character.'),
+
+  body('confirmNewPassword')
+    .optional({ checkFalsy: true })
+    .custom((value, { req }) => {
+      if (value && value !== req.body.newPassword) {
+        throw new Error('New password and confirm password do not match.');
+      }
+      return true;
+    })
 ];
 
 module.exports = {

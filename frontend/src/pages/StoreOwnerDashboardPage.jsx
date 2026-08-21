@@ -19,17 +19,20 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  KeyRound,
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
+import { ChangePasswordModal } from '../components/auth/ChangePasswordModal';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
 export const StoreOwnerDashboardPage = () => {
   const { user } = useAuth();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   // Dashboard Overview & Stats State
   const [dashboardData, setDashboardData] = useState({
@@ -223,6 +226,15 @@ export const StoreOwnerDashboardPage = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={KeyRound}
+            onClick={() => setIsPasswordModalOpen(true)}
+          >
+            Change Password
+          </Button>
+
           <Button
             variant="secondary"
             size="sm"
@@ -634,6 +646,12 @@ export const StoreOwnerDashboardPage = () => {
           />
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
     </div>
   );
 };

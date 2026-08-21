@@ -207,28 +207,50 @@ class AuthService {
   /**
    * Update password for authenticated user
    */
-  async updatePassword(userId, { currentPassword, newPassword }) {
-    if (currentPassword === newPassword) {
+  async updatePassword(userId, { currentPassword, oldPassword, newPassword, confirmNewPassword, confirmPassword }) {
+    const activeCurrent = currentPassword || oldPassword;
+    const activeConfirm = confirmNewPassword || confirmPassword;
+
+    if (!activeCurrent) {
+      throw new BadRequestError('Current password is required.');
+    }
+    if (!newPassword) {
+      throw new BadRequestError('New password is required.');
+    }
+    if (activeConfirm && newPassword !== activeConfirm) {
+      throw new BadRequestError('New password and confirmation do not match.');
+    }
+    if (activeCurrent === newPassword) {
       throw new BadRequestError('New password must be different from the current password.');
     }
 
     if (db.getStatus().connected) {
-      const res = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+      const res = await db.query('SELECT id, password_hash, email FROM users WHERE id = $1', [userId]);
       if (res.rows.length === 0) {
-        throw new NotFoundError('User not found.');
+        throw new NotFoundError('User profile not found.');
       }
 
-      const isMatch = await comparePassword(currentPassword, res.rows[0].password_hash);
+      const isMatch = await comparePassword(activeCurrent, res.rows[0].password_hash);
       if (!isMatch) {
         throw new UnauthorizedError('Current password is incorrect.');
       }
 
       const newHashed = await hashPassword(newPassword);
-      await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHashed, userId]);
-      return { message: 'Password updated successfully.' };
+      await db.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newHashed, userId]);
+      return { message: 'Password updated successfully. Please use your new password on subsequent logins.' };
     }
 
-    return { message: 'Password updated successfully (Demo mode).' };
+    // Mock Fallback verification
+    const demo = DEMO_ACCOUNTS.find((u) => u.id === userId);
+    if (demo) {
+      if (activeCurrent !== demo.rawPassword) {
+        throw new UnauthorizedError('Current password is incorrect.');
+      }
+      demo.rawPassword = newPassword;
+      return { message: 'Password updated successfully. Please use your new password on subsequent logins.' };
+    }
+
+    return { message: 'Password updated successfully.' };
   }
 
   /**

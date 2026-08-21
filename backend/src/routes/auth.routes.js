@@ -41,6 +41,8 @@ router.post('/logout', authenticate, logout);
  * @access  Private (Authenticated)
  */
 router.put('/password', authenticate, validate(updatePasswordValidator), updatePassword);
+router.put('/change-password', authenticate, validate(updatePasswordValidator), updatePassword);
+router.post('/change-password', authenticate, validate(updatePasswordValidator), updatePassword);
 
 /**
  * @route   GET /api/v1/auth/roles
