@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
 
 /**
  * Hash plain text password using bcrypt
