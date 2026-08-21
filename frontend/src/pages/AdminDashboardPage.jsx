@@ -313,10 +313,13 @@ export const AdminDashboardPage = () => {
       {/* TAB 2: USER MANAGEMENT DIRECTORY */}
       {activeTab === 'users' && (
         <div className="glass-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Users size={18} color="#818cf8" /> Registered Platform Users ({recentUsers.length})
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+              <Users size={18} color="#818cf8" /> Recent Registered Platform Users
             </h2>
+            <Link to="/admin/users" className="btn btn-primary btn-sm">
+              <Users size={14} /> Open Full User Management & Filters
+            </Link>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
