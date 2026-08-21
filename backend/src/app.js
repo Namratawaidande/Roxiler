@@ -18,14 +18,24 @@ const corsOptions = {
     // Allow non-browser requests (e.g. curl, postman, server-to-server)
     if (!origin) return callback(null, true);
 
+    const configuredOrigins = env.CLIENT_URL
+      ? env.CLIENT_URL.split(',').map((u) => u.trim())
+      : [];
+
     const allowedOrigins = [
-      env.CLIENT_URL,
+      ...configuredOrigins,
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173'
     ];
 
-    if (allowedOrigins.includes(origin) || env.isDevelopment) {
+    if (
+      allowedOrigins.includes(origin) ||
+      env.isDevelopment ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com') ||
+      origin.endsWith('.netlify.app')
+    ) {
       return callback(null, true);
     }
     return callback(new Error(`Origin '${origin}' blocked by CORS security policy.`));

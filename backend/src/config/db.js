@@ -6,18 +6,28 @@ let pool = null;
 let isConnected = false;
 let lastConnectionError = null;
 
+let poolConfig = {
+  max: env.DB.MAX_CONNECTIONS,
+  idleTimeoutMillis: env.DB.IDLE_TIMEOUT_MS,
+  connectionTimeoutMillis: env.DB.CONNECTION_TIMEOUT_MS
+};
+
+if (process.env.DATABASE_URL) {
+  poolConfig.connectionString = process.env.DATABASE_URL;
+  if (env.DB.SSL || process.env.DATABASE_URL.includes('sslmode=require')) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+} else {
+  poolConfig.host = env.DB.HOST;
+  poolConfig.port = env.DB.PORT;
+  poolConfig.database = env.DB.NAME;
+  poolConfig.user = env.DB.USER;
+  poolConfig.password = env.DB.PASSWORD;
+  poolConfig.ssl = env.DB.SSL ? { rejectUnauthorized: false } : false;
+}
+
 try {
-  pool = new Pool({
-    host: env.DB.HOST,
-    port: env.DB.PORT,
-    database: env.DB.NAME,
-    user: env.DB.USER,
-    password: env.DB.PASSWORD,
-    ssl: env.DB.SSL ? { rejectUnauthorized: false } : false,
-    max: env.DB.MAX_CONNECTIONS,
-    idleTimeoutMillis: env.DB.IDLE_TIMEOUT_MS,
-    connectionTimeoutMillis: env.DB.CONNECTION_TIMEOUT_MS
-  });
+  pool = new Pool(poolConfig);
 
   pool.on('error', (err) => {
     logger.error('Unexpected error on idle PostgreSQL client pool:', err.message);
