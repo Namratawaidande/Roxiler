@@ -15,6 +15,7 @@ import {
   Building,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -30,10 +31,8 @@ export const StoreOwnerDashboardPage = () => {
   // Dashboard Overview & Stats State
   const [dashboardData, setDashboardData] = useState({
     stores: [],
-    myStores: [],
     totalStores: 0,
     totalRatings: 0,
-    totalRatingsReceived: 0,
     averageRating: 0.0,
     overallRating: 0.0,
     ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
@@ -56,35 +55,45 @@ export const StoreOwnerDashboardPage = () => {
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  // 1. Fetch Dashboard Metrics & Store Info
+  // 1. Fetch Dashboard Metrics & Store Details from Live Express Endpoints
   const fetchDashboardMetrics = async () => {
     setDashLoading(true);
     setError(null);
+
     try {
-      const response = await api.get('/dashboard/owner');
-      if (response?.data) {
-        const d = response.data;
-        setDashboardData({
-          stores: d.stores || d.myStores || [],
-          myStores: d.myStores || d.stores || [],
-          totalStores: d.totalStores || (d.stores || []).length,
-          totalRatings: d.totalRatingsReceived || d.totalRatings || 0,
-          totalRatingsReceived: d.totalRatingsReceived || d.totalRatings || 0,
-          averageRating: Number(d.averageRating || d.overallRating || 0.0),
-          overallRating: Number(d.overallRating || d.averageRating || 0.0),
-          ratingDistribution: d.ratingDistribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
-        });
-      }
+      // Parallel requests to /dashboard/owner and /ratings/owner/stats
+      const [dashRes, statsRes] = await Promise.all([
+        api.get('/dashboard/owner').catch(() => null),
+        api.get('/ratings/owner/stats').catch(() => null)
+      ]);
+
+      const d = dashRes?.data || {};
+      const s = statsRes?.data || {};
+
+      const combinedStores = s.stores || d.stores || d.myStores || [];
+      const totalRatings = s.totalRatings !== undefined ? s.totalRatings : (d.totalRatingsReceived || d.totalRatings || 0);
+      const averageRating = Number(s.averageRating !== undefined ? s.averageRating : (d.averageRating || d.overallRating || 0.0));
+      const ratingDistribution = s.ratingDistribution || d.ratingDistribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+
+      setDashboardData({
+        stores: combinedStores,
+        totalStores: s.totalStores || combinedStores.length,
+        totalRatings,
+        averageRating,
+        overallRating: averageRating,
+        ratingDistribution
+      });
     } catch (err) {
-      setError(err.message || 'Failed to load merchant dashboard metrics.');
+      setError(err.message || 'Failed to load merchant dashboard metrics. Please check your connection.');
     } finally {
       setDashLoading(false);
     }
   };
 
-  // 2. Fetch Paginated Customer Reviews List
+  // 2. Fetch Paginated Customer Reviews from Live Express Endpoint
   const fetchCustomerRatings = useCallback(async () => {
     setRatingsLoading(true);
+
     try {
       const params = {
         page,
@@ -102,6 +111,7 @@ export const StoreOwnerDashboardPage = () => {
           fetchedRatings = fetchedRatings.filter((r) => r.rating === filterNum || r.ratingValue === filterNum);
         }
         setRatingsList(fetchedRatings);
+
         if (response.meta) {
           const m = response.meta.pagination || response.meta;
           setRatingsMeta({
@@ -113,7 +123,7 @@ export const StoreOwnerDashboardPage = () => {
         }
       }
     } catch {
-      // Fallback
+      // Keep existing list on transient network error
     } finally {
       setRatingsLoading(false);
     }
@@ -138,8 +148,8 @@ export const StoreOwnerDashboardPage = () => {
   const satisfactionRate = totalRatingsCount > 0 ? Math.round((positiveRatings / totalRatingsCount) * 100) : 0;
 
   const primaryStore = dashboardData.stores[0] || {
-    name: 'Your Store',
-    email: 'merchant@storerating.com',
+    name: user?.name ? `${user.name}'s Store` : 'Your Registered Store',
+    email: user?.email || 'merchant@storerating.com',
     address: 'Store Address Registered on Platform'
   };
 
@@ -158,13 +168,13 @@ export const StoreOwnerDashboardPage = () => {
         <div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
             <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <Store size={12} /> STORE_OWNER PORTAL
+              <Store size={12} /> STORE_OWNER AREA
             </span>
             <span className="badge badge-success">Merchant: {user?.name || user?.email}</span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Merchant Performance Dashboard</h1>
           <p style={{ fontSize: '0.95rem' }}>
-            Real-time analytics, store rating performance, and customer review insights for your store.
+            Real-time PostgreSQL analytics, store rating performance, and customer review insights.
           </p>
         </div>
 
@@ -284,7 +294,7 @@ export const StoreOwnerDashboardPage = () => {
               />
             ))}
             <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginLeft: '6px' }}>
-              Computed from all reviews
+              Calculated across all reviews
             </span>
           </div>
         </div>
