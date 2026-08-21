@@ -20,7 +20,17 @@ const updateRating = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, { rating }, 'Rating updated successfully.');
 });
 
+/**
+ * Get Store Owner Customer Ratings List (STORE_OWNER only)
+ * GET /api/v1/ratings/owner
+ */
+const getStoreOwnerRatings = asyncHandler(async (req, res) => {
+  const result = await ratingService.getStoreOwnerRatings(req.user.id, req.query);
+  return ApiResponse.success(res, { ratings: result.ratings }, 'Store customer ratings retrieved successfully.', 200, result.meta);
+});
+
 module.exports = {
   submitRating,
-  updateRating
+  updateRating,
+  getStoreOwnerRatings
 };

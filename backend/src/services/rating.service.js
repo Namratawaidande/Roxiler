@@ -1,10 +1,52 @@
 const db = require('../config/db');
+const { parsePagination, parseSort, buildPaginationMeta } = require('../utils/queryHelper');
 const { NotFoundError, ConflictError, BadRequestError, ForbiddenError } = require('../errors/ApiError');
 const { ROLES } = require('../constants/roles');
 
 // Mock fallback ratings store
 const mockRatingsCollection = [
-  { id: 1, user_id: 4, store_id: 1, rating_value: 5, comment: 'Outstanding service and quick delivery!', created_at: '2026-01-20T10:00:00.000Z', updated_at: '2026-01-20T10:00:00.000Z' }
+  {
+    id: 1,
+    user_id: 4,
+    userName: 'John Doe',
+    userEmail: 'john.doe@example.com',
+    userAddress: '12 Maple Street, Apt 3B, Springfield',
+    store_id: 1,
+    storeName: 'Apex Digital & Electronics Flagship',
+    owner_id: 2,
+    rating_value: 5,
+    comment: 'Outstanding service and quick delivery of electronics!',
+    created_at: '2026-01-20T10:00:00.000Z',
+    updated_at: '2026-01-20T10:00:00.000Z'
+  },
+  {
+    id: 2,
+    user_id: 5,
+    userName: 'Sarah Jenkins',
+    userEmail: 'sarah.jenkins@example.com',
+    userAddress: '88 Oak Ridge Terrace, Westview',
+    store_id: 1,
+    storeName: 'Apex Digital & Electronics Flagship',
+    owner_id: 2,
+    rating_value: 4,
+    comment: 'Very good product selection and friendly staff.',
+    created_at: '2026-01-22T14:30:00.000Z',
+    updated_at: '2026-01-22T14:30:00.000Z'
+  },
+  {
+    id: 3,
+    user_id: 6,
+    userName: 'Michael Chang',
+    userEmail: 'michael.chang@example.com',
+    userAddress: '504 Pine Avenue, Bay District',
+    store_id: 2,
+    storeName: 'Urban Gourmet & Artisan Market',
+    owner_id: 3,
+    rating_value: 5,
+    comment: 'The highest quality artisan goods and fresh organic bakery in town.',
+    created_at: '2026-01-25T09:15:00.000Z',
+    updated_at: '2026-01-25T09:15:00.000Z'
+  }
 ];
 
 class RatingService {
@@ -82,7 +124,12 @@ class RatingService {
     const newRating = {
       id: Math.max(...mockRatingsCollection.map((r) => r.id), 10) + 1,
       user_id: user.id,
+      userName: user.name || 'Normal User',
+      userEmail: user.email || 'user@example.com',
+      userAddress: user.address || 'User Address',
       store_id: numericStoreId,
+      storeName: store.name,
+      owner_id: store.owner_id,
       rating_value: numericRating,
       comment: cleanComment,
       created_at: new Date().toISOString(),
@@ -186,6 +233,118 @@ class RatingService {
     };
 
     return mockRatingsCollection[ratingIndex];
+  }
+
+  /**
+   * Get all customer ratings for stores owned by the authenticated STORE_OWNER
+   * Strictly resolves stores belonging to `ownerId` with sorting and pagination
+   */
+  async getStoreOwnerRatings(ownerId, query = {}) {
+    const numericOwnerId = parseInt(ownerId, 10);
+    const { page, limit, offset } = parsePagination(query);
+
+    // Whitelist and map sort fields to SQL column aliases
+    const sortFieldMap = {
+      userName: 'u.name',
+      name: 'u.name',
+      userEmail: 'u.email',
+      email: 'u.email',
+      userAddress: 'u.address',
+      address: 'u.address',
+      rating: 'r.rating_value',
+      rating_value: 'r.rating_value',
+      ratingValue: 'r.rating_value',
+      createdAt: 'r.created_at',
+      created_at: 'r.created_at',
+      id: 'r.id'
+    };
+
+    const requestedSort = (query.sortBy || 'createdAt').trim();
+    const sortColumn = sortFieldMap[requestedSort] || 'r.created_at';
+    const order = (query.order || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    if (db.getStatus().connected) {
+      // 1. Total Count Query for Owner's Stores
+      const countRes = await db.query(
+        `SELECT COUNT(*)::int as count
+         FROM ratings r
+         JOIN stores s ON r.store_id = s.id
+         WHERE s.owner_id = $1`,
+        [numericOwnerId]
+      );
+      const totalItems = countRes.rows[0].count;
+
+      // 2. Data Query with Customer Profile Attributes
+      const dataQuery = `
+        SELECT 
+          r.id,
+          r.rating_value as rating,
+          r.rating_value as "ratingValue",
+          r.comment,
+          r.created_at as "createdAt",
+          r.created_at,
+          r.updated_at as "updatedAt",
+          r.updated_at,
+          s.id as "storeId",
+          s.name as "storeName",
+          u.id as "userId",
+          u.name as "userName",
+          u.email as "userEmail",
+          u.address as "userAddress"
+        FROM ratings r
+        JOIN stores s ON r.store_id = s.id
+        JOIN users u ON r.user_id = u.id
+        WHERE s.owner_id = $1
+        ORDER BY ${sortColumn} ${order}
+        LIMIT $2 OFFSET $3
+      `;
+
+      const dataRes = await db.query(dataQuery, [numericOwnerId, limit, offset]);
+
+      return {
+        ratings: dataRes.rows,
+        meta: buildPaginationMeta(totalItems, page, limit)
+      };
+    }
+
+    // Mock Fallback
+    let filtered = mockRatingsCollection.filter((r) => r.owner_id === numericOwnerId);
+
+    // Mock Sorting
+    filtered.sort((a, b) => {
+      let field = requestedSort;
+      let valA = a[field] || a[field === 'userName' ? 'userName' : field] || '';
+      let valB = b[field] || b[field === 'userName' ? 'userName' : field] || '';
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return order === 'ASC' ? -1 : 1;
+      if (valA > valB) return order === 'ASC' ? 1 : -1;
+      return 0;
+    });
+
+    const totalItems = filtered.length;
+    const paginated = filtered.slice(offset, offset + limit).map((r) => ({
+      id: r.id,
+      storeId: r.store_id,
+      storeName: r.storeName,
+      userId: r.user_id,
+      userName: r.userName,
+      userEmail: r.userEmail,
+      userAddress: r.userAddress,
+      rating: r.rating_value,
+      ratingValue: r.rating_value,
+      comment: r.comment,
+      createdAt: r.created_at,
+      created_at: r.created_at,
+      updatedAt: r.updated_at,
+      updated_at: r.updated_at
+    }));
+
+    return {
+      ratings: paginated,
+      meta: buildPaginationMeta(totalItems, page, limit)
+    };
   }
 }
 

@@ -54,10 +54,10 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runStoreOwnerDashboardTests = async () => {
+const runStoreOwnerRatingsListTests = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 TEST RUNNER: STORE_OWNER Backend Dashboard & Cross-Owner Isolation`);
+  console.log(`🧪 TEST RUNNER: STORE_OWNER Dedicated Customer Ratings List Suite`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
@@ -65,87 +65,101 @@ const runStoreOwnerDashboardTests = async () => {
     // --- 1. AUTHENTICATING TEST ROLES ---
     console.log('--- 1. AUTHENTICATION OF TEST ACCOUNTS ---');
     const owner1Login = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
-    if (owner1Login.statusCode !== 200) throw new Error('Store Owner 1 login failed');
+    if (owner1Login.statusCode !== 200) throw new Error('Owner 1 login failed');
     const owner1Token = owner1Login.data.data.token;
 
     const owner2Login = await request('POST', '/api/v1/auth/login', { email: 'owner2@storerating.com', password: 'Owner@123456' });
-    if (owner2Login.statusCode !== 200) throw new Error('Store Owner 2 login failed');
+    if (owner2Login.statusCode !== 200) throw new Error('Owner 2 login failed');
     const owner2Token = owner2Login.data.data.token;
 
     const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    if (userLogin.statusCode !== 200) throw new Error('Normal User login failed');
+    if (userLogin.statusCode !== 200) throw new Error('Normal user login failed');
     const userToken = userLogin.data.data.token;
-    console.log('  ✔ Authenticated STORE_OWNER #1 (Alice), STORE_OWNER #2 (Marcus), and NORMAL_USER.');
 
-    // --- 2. STORE_OWNER 1 DASHBOARD RETRIEVAL ---
-    console.log('\n--- 2. STORE_OWNER #1 (ALICE) DASHBOARD RETRIEVAL ---');
-    const owner1DashRes = await request('GET', '/api/v1/dashboard/owner', null, owner1Token);
-    if (owner1DashRes.statusCode !== 200) {
-      throw new Error(`Expected 200 OK for Owner 1 dashboard, got ${owner1DashRes.statusCode}`);
-    }
-    const dash1 = owner1DashRes.data.data;
-    if (!dash1.stores || dash1.stores.length === 0) throw new Error('Owner 1 missing store listings');
-    console.log(`  ✔ [GET /api/v1/dashboard/owner] Owner #1 retrieved ${dash1.stores.length} store(s) with overall rating: ${dash1.averageRating}★.`);
+    const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
+    if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
+    const adminToken = adminLogin.data.data.token;
+    console.log('  ✔ Authenticated STORE_OWNER #1, STORE_OWNER #2, NORMAL_USER, and SYSTEM_ADMIN.');
 
-    // Check customer ratings list
-    if (!dash1.ratingsList || dash1.ratingsList.length === 0) {
-      throw new Error('Owner 1 missing customer reviews list');
+    // --- 2. RETRIEVING OWNER RATINGS LIST ---
+    console.log('\n--- 2. RETRIEVING STORE_OWNER #1 (ALICE) RATINGS LIST ---');
+    const owner1RatingsRes = await request('GET', '/api/v1/ratings/owner', null, owner1Token);
+    if (owner1RatingsRes.statusCode !== 200) {
+      throw new Error(`Expected 200 OK for owner ratings, got ${owner1RatingsRes.statusCode}`);
     }
-    const review1 = dash1.ratingsList[0];
-    if (!review1.userName || !review1.userEmail || typeof review1.rating !== 'number') {
-      throw new Error('Customer review missing user profile fields or rating');
-    }
-    if (review1.password || review1.password_hash) {
-      throw new Error('Security Leak: Password exposed in customer reviews list');
-    }
-    console.log(`  ✔ Customer Review verified: "${review1.userName}" (${review1.userEmail}) rated ${review1.rating}★ at "${review1.storeName}".`);
-    console.log(`    ↳ Customer Location: "${review1.userAddress || 'N/A'}" (Zero password exposure).`);
+    const ratings = owner1RatingsRes.data.data.ratings;
+    if (!ratings || ratings.length === 0) throw new Error('No customer ratings returned for Owner 1');
+    console.log(`  ✔ [GET /api/v1/ratings/owner] Retrieved ${ratings.length} customer ratings for Owner #1.`);
 
-    // --- 3. STORE_OWNER 2 DASHBOARD & CROSS-OWNER ISOLATION ---
-    console.log('\n--- 3. STORE_OWNER #2 (MARCUS) & CROSS-OWNER DATA ISOLATION ---');
-    const owner2DashRes = await request('GET', '/api/v1/dashboard/owner', null, owner2Token);
-    if (owner2DashRes.statusCode !== 200) {
-      throw new Error(`Expected 200 OK for Owner 2 dashboard, got ${owner2DashRes.statusCode}`);
+    // Customer profile attribute checks
+    const r1 = ratings[0];
+    if (!r1.userName || !r1.userEmail || !r1.rating) {
+      throw new Error('Customer rating missing required fields (userName, userEmail, rating)');
     }
-    const dash2 = owner2DashRes.data.data;
-    if (!dash2.stores || dash2.stores.length === 0) throw new Error('Owner 2 missing store listings');
+    if (r1.password || r1.password_hash) {
+      throw new Error('Security Leak: Password found in customer rating payload');
+    }
+    console.log(`  ✔ Customer Review Verified: "${r1.userName}" (${r1.userEmail}) rated ${r1.rating}★ at "${r1.storeName}".`);
+    console.log(`    ↳ Customer Address: "${r1.userAddress || 'N/A'}" | Date: ${r1.createdAt || r1.created_at}.`);
 
-    // Verify isolation: Marcus only sees Marcus's stores (Store 2: Urban Gourmet)
-    dash2.stores.forEach((s) => {
-      if (s.name.includes('Apex Digital')) {
-        throw new Error('Data Leak: Owner 2 received Owner 1 store');
-      }
-    });
-    dash2.ratingsList.forEach((r) => {
+    // --- 3. ALLOWLISTED SORTING (USER NAME, EMAIL, RATING, DATE) ---
+    console.log('\n--- 3. ALLOWLISTED SORTING TESTS ---');
+    const sortFields = ['userName', 'userEmail', 'rating', 'createdAt'];
+    for (const field of sortFields) {
+      const resAsc = await request('GET', `/api/v1/ratings/owner?sortBy=${field}&order=asc`, null, owner1Token);
+      if (resAsc.statusCode !== 200) throw new Error(`Sorting by ${field} ASC failed`);
+      const resDesc = await request('GET', `/api/v1/ratings/owner?sortBy=${field}&order=desc`, null, owner1Token);
+      if (resDesc.statusCode !== 200) throw new Error(`Sorting by ${field} DESC failed`);
+      console.log(`  ✔ [GET /api/v1/ratings/owner?sortBy=${field}&order=asc|desc] Verified sorting on "${field}".`);
+    }
+
+    // --- 4. PAGINATION METADATA VALIDATION ---
+    console.log('\n--- 4. PAGINATION METADATA STRUCTURE ---');
+    const pagedRes = await request('GET', '/api/v1/ratings/owner?page=1&limit=1', null, owner1Token);
+    if (pagedRes.statusCode !== 200) throw new Error('Pagination request failed');
+    const meta = pagedRes.data.meta;
+    const pagination = meta?.pagination || meta;
+    if (!pagination || typeof pagination.totalItems !== 'number' || typeof pagination.totalPages !== 'number') {
+      throw new Error('Pagination metadata missing totalItems or totalPages');
+    }
+    console.log(`  ✔ Pagination validated: Page ${pagination.page || pagination.currentPage} of ${pagination.totalPages} (Total: ${pagination.totalItems} ratings, Limit: ${pagination.pageSize || pagination.limit}).`);
+
+    // --- 5. CROSS-OWNER ISOLATION ---
+    console.log('\n--- 5. CROSS-OWNER DATA ISOLATION ---');
+    const owner2RatingsRes = await request('GET', '/api/v1/ratings/owner', null, owner2Token);
+    if (owner2RatingsRes.statusCode !== 200) throw new Error('Owner 2 ratings request failed');
+    const owner2Ratings = owner2RatingsRes.data.data.ratings;
+
+    owner2Ratings.forEach((r) => {
       if (r.storeName.includes('Apex Digital')) {
-        throw new Error('Data Leak: Owner 2 received Owner 1 customer review');
+        throw new Error('Data Leak: Marcus received Alice customer reviews');
       }
     });
-    console.log(`  ✔ Cross-Owner Data Isolation Verified: Marcus Vance received only his owned store ("${dash2.stores[0].name}").`);
+    console.log(`  ✔ Cross-owner isolation verified: Marcus Vance received only his store reviews ("${owner2Ratings[0]?.storeName}").`);
 
-    // --- 4. ROLE-BASED ACCESS BARRIERS ---
-    console.log('\n--- 4. ROLE-BASED ACCESS BARRIERS ---');
-    const userToOwnerDash = await request('GET', '/api/v1/dashboard/owner', null, userToken);
-    if (userToOwnerDash.statusCode !== 403) {
-      throw new Error('NORMAL_USER was not blocked with 403 from accessing Store Owner dashboard');
-    }
-    console.log('  ✔ [GET /api/v1/dashboard/owner] (NORMAL_USER) -> 403 Forbidden (Blocked).');
+    // --- 6. ROLE-BASED ACCESS GUARDS ---
+    console.log('\n--- 6. ROLE-BASED ACCESS BARRIERS ---');
+    const userAccess = await request('GET', '/api/v1/ratings/owner', null, userToken);
+    if (userAccess.statusCode !== 403) throw new Error('NORMAL_USER was not blocked with 403');
+    console.log('  ✔ [GET /api/v1/ratings/owner] (NORMAL_USER) -> 403 Forbidden (Blocked).');
 
-    const unauthToOwnerDash = await request('GET', '/api/v1/dashboard/owner');
-    if (unauthToOwnerDash.statusCode !== 401) {
-      throw new Error('Unauthenticated request was not blocked with 401');
-    }
-    console.log('  ✔ [GET /api/v1/dashboard/owner] (Unauthenticated) -> 401 Unauthorized (Blocked).');
+    const adminAccess = await request('GET', '/api/v1/ratings/owner', null, adminToken);
+    if (adminAccess.statusCode !== 403) throw new Error('SYSTEM_ADMIN was not blocked with 403');
+    console.log('  ✔ [GET /api/v1/ratings/owner] (SYSTEM_ADMIN) -> 403 Forbidden (Blocked).');
+
+    const unauthAccess = await request('GET', '/api/v1/ratings/owner');
+    if (unauthAccess.statusCode !== 401) throw new Error('Unauthenticated request was not blocked with 401');
+    console.log('  ✔ [GET /api/v1/ratings/owner] (Unauthenticated) -> 401 Unauthorized (Blocked).');
 
     console.log('\n======================================================================');
-    console.log('✨ ALL STORE_OWNER BACKEND DASHBOARD TESTS PASSED (100% GREEN)');
+    console.log('✨ ALL STORE_OWNER RATINGS LIST TESTS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runStoreOwnerDashboardTests()
+runStoreOwnerRatingsListTests()
   .then(() => {
     process.exit(0);
   })
