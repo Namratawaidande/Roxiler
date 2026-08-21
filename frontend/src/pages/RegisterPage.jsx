@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, User, AlertCircle, CheckCircle, Lock, Mail, MapPin, Check, X, Sparkles } from 'lucide-react';
+import { UserPlus, User, Lock, Mail, MapPin, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import { InputField } from '../components/forms/InputField';
+import { TextareaField } from '../components/forms/TextareaField';
+import { PasswordStrengthMeter } from '../components/forms/PasswordStrengthMeter';
+import { Button } from '../components/common/Button';
+import { Alert } from '../components/common/Alert';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -19,7 +24,7 @@ export const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  // Live password validation rules
+  // Live password validation
   const passwordLengthValid = formData.password.length >= 8 && formData.password.length <= 16;
   const passwordUpperValid = /[A-Z]/.test(formData.password);
   const passwordSpecialValid = /[!@#$%^&*(),.?":{}|<>_]/.test(formData.password);
@@ -44,9 +49,9 @@ export const RegisterPage = () => {
   const handleFillSample = () => {
     const randomSuffix = Math.floor(100 + Math.random() * 900);
     setFormData({
-      name: 'Alexander Montgomery Wright', // 27 characters (satisfies 20-60)
+      name: 'Alexander Montgomery Wright',
       email: `alex.wright${randomSuffix}@example.com`,
-      password: 'SecureUser@123', // 14 chars, 2 uppercase, 1 special
+      password: 'SecureUser@123',
       address: '742 Evergreen Terrace, Sector 4, Springfield'
     });
     setError(null);
@@ -59,7 +64,7 @@ export const RegisterPage = () => {
 
     // Client-side pre-validation
     if (!isNameValid) {
-      setError(`Full Name must be between 20 and 60 characters (currently ${nameLength} chars).`);
+      setError(`Full Name must be between 20 and 60 characters long (currently ${nameLength} characters).`);
       return;
     }
 
@@ -79,9 +84,9 @@ export const RegisterPage = () => {
       const response = await authService.register(formData);
       if (response?.data?.token && response?.data?.user) {
         login(response.data.user, response.data.token);
-        setSuccessMsg('Account registered successfully as Normal User! Redirecting...');
+        setSuccessMsg('Normal User account registered successfully! Redirecting...');
         setTimeout(() => {
-          navigate('/dashboard-preview');
+          navigate('/user', { replace: true });
         }, 800);
       }
     } catch (err) {
@@ -128,162 +133,77 @@ export const RegisterPage = () => {
         </div>
 
         {/* Error Alert */}
-        {error && (
-          <div style={{
-            background: 'rgba(244, 63, 94, 0.12)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: '10px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: '#fb7185',
-            fontSize: '0.85rem'
-          }}>
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
         {/* Success Alert */}
-        {successMsg && (
-          <div style={{
-            background: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '10px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: '#34d399',
-            fontSize: '0.85rem'
-          }}>
-            <CheckCircle size={16} />
-            <span>{successMsg}</span>
-          </div>
-        )}
+        {successMsg && <Alert type="success" message={successMsg} />}
 
         {/* Registration Form */}
         <form onSubmit={handleSubmit}>
-          {/* Name Field */}
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
-                <User size={14} /> Full Name <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <span style={{
-                fontSize: '0.75rem',
-                color: nameLength === 0 ? 'var(--text-subtle)' : isNameValid ? '#34d399' : '#fb7185'
-              }}>
-                {nameLength}/60 chars {nameLength < 20 && nameLength > 0 && '(min 20)'}
-              </span>
-            </div>
-            <input
-              type="text"
-              name="name"
-              className="form-input"
-              placeholder="e.g. Alexander Montgomery Wright"
-              value={formData.name}
-              onChange={handleChange}
-              minLength={20}
-              maxLength={60}
-              required
-            />
-            <small style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.25rem', display: 'block' }}>
-              Must be between 20 and 60 characters long.
-            </small>
-          </div>
+          <InputField
+            label="Full Name"
+            name="name"
+            type="text"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="e.g. Alexander Montgomery Wright"
+            icon={User}
+            minLength={20}
+            maxLength={60}
+            showCharCount={true}
+            hint="Must be between 20 and 60 characters long."
+            required
+            autoComplete="name"
+          />
 
-          {/* Email Field */}
-          <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Mail size={14} /> Email Address <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              type="email"
-              name="email"
-              className="form-input"
-              placeholder="user@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <InputField
+            label="Email Address"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="user@example.com"
+            icon={Mail}
+            required
+            autoComplete="email"
+          />
 
-          {/* Password Field & Live Meter */}
-          <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <Lock size={14} /> Password <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <input
-              type="password"
+          <div style={{ marginBottom: '1.25rem' }}>
+            <InputField
+              label="Password"
               name="password"
-              className="form-input"
-              placeholder="8 to 16 characters"
+              type="password"
               value={formData.password}
               onChange={handleChange}
+              placeholder="8 to 16 characters"
+              icon={Lock}
               maxLength={16}
               required
+              autoComplete="new-password"
             />
-
-            {/* Password Validation Checklist */}
-            <div style={{
-              marginTop: '0.5rem',
-              padding: '0.6rem 0.75rem',
-              borderRadius: '8px',
-              background: 'rgba(15, 23, 42, 0.6)',
-              border: '1px solid var(--border-color)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.3rem',
-              fontSize: '0.75rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: passwordLengthValid ? '#34d399' : 'var(--text-subtle)' }}>
-                {passwordLengthValid ? <Check size={13} color="#34d399" /> : <X size={13} color="#94a3b8" />}
-                <span>8 to 16 characters ({formData.password.length}/16)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: passwordUpperValid ? '#34d399' : 'var(--text-subtle)' }}>
-                {passwordUpperValid ? <Check size={13} color="#34d399" /> : <X size={13} color="#94a3b8" />}
-                <span>At least 1 uppercase letter (A-Z)</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: passwordSpecialValid ? '#34d399' : 'var(--text-subtle)' }}>
-                {passwordSpecialValid ? <Check size={13} color="#34d399" /> : <X size={13} color="#94a3b8" />}
-                <span>At least 1 special character (!@#$%^&*...)</span>
-              </div>
-            </div>
+            <PasswordStrengthMeter password={formData.password} />
           </div>
 
-          {/* Address Field */}
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
-                <MapPin size={14} /> Address (Optional)
-              </label>
-              <span style={{ fontSize: '0.75rem', color: isAddressValid ? 'var(--text-subtle)' : '#fb7185' }}>
-                {addressLength}/400 chars
-              </span>
-            </div>
-            <textarea
-              name="address"
-              className="form-input"
-              rows={2}
-              placeholder="e.g. 742 Evergreen Terrace, Springfield"
-              value={formData.address}
-              onChange={handleChange}
-              maxLength={400}
-            />
-          </div>
+          <TextareaField
+            label="Address (Optional)"
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            placeholder="e.g. 742 Evergreen Terrace, Sector 4, Springfield"
+            icon={MapPin}
+            maxLength={400}
+            rows={2}
+          />
 
-          <button
+          <Button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.75rem', padding: '0.8rem' }}
-            disabled={loading}
+            variant="primary"
+            size="lg"
+            loading={loading}
+            style={{ width: '100%', marginTop: '0.75rem' }}
           >
-            {loading ? 'Creating Normal User Account...' : 'Complete Registration'}
-          </button>
+            Complete Registration
+          </Button>
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.85rem' }}>

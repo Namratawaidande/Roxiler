@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { LogIn, Shield, Store, User, AlertCircle, CheckCircle, Lock, Mail, ArrowRight } from 'lucide-react';
+import { LogIn, Shield, Store, User, Lock, Mail, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import { InputField } from '../components/forms/InputField';
+import { Button } from '../components/common/Button';
+import { Alert } from '../components/common/Alert';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -15,8 +18,22 @@ export const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [successUser, setSuccessUser] = useState(null);
 
-  // Redirection destination after login (default to role dashboard)
-  const from = location.state?.from?.pathname || '/dashboard-preview';
+  const getDestinationForRole = (role) => {
+    // If a specific redirect was requested in location state (and not generic /login)
+    if (location.state?.from?.pathname && location.state.from.pathname !== '/login') {
+      return location.state.from.pathname;
+    }
+
+    switch (role) {
+      case 'SYSTEM_ADMIN':
+        return '/admin';
+      case 'STORE_OWNER':
+        return '/owner';
+      case 'NORMAL_USER':
+      default:
+        return '/user';
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,10 +48,12 @@ export const LoginPage = () => {
         login(authenticatedUser, response.data.token);
         setSuccessUser(authenticatedUser);
 
+        const targetDestination = getDestinationForRole(authenticatedUser.role);
+
         // Redirect after brief visual feedback
         setTimeout(() => {
-          navigate(from, { replace: true });
-        }, 700);
+          navigate(targetDestination, { replace: true });
+        }, 600);
       }
     } catch (err) {
       setError(err.message || 'Invalid email or password credentials.');
@@ -43,7 +62,7 @@ export const LoginPage = () => {
     }
   };
 
-  const fillQuickDemo = (demoRole, specificEmail = '') => {
+  const fillQuickDemo = (demoRole) => {
     switch (demoRole) {
       case 'SYSTEM_ADMIN':
         setEmail('admin@storerating.com');
@@ -59,7 +78,7 @@ export const LoginPage = () => {
         break;
       case 'NORMAL_USER':
       default:
-        setEmail(specificEmail || 'john.doe@example.com');
+        setEmail('john.doe@example.com');
         setPassword('User@123456');
         break;
     }
@@ -89,44 +108,15 @@ export const LoginPage = () => {
         </div>
 
         {/* Error Alert */}
-        {error && (
-          <div style={{
-            background: 'rgba(244, 63, 94, 0.12)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: '10px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: '#fb7185',
-            fontSize: '0.875rem'
-          }}>
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
         {/* Success Alert with Role Identification */}
         {successUser && (
-          <div style={{
-            background: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '10px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            color: '#34d399',
-            fontSize: '0.875rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <CheckCircle size={16} />
-              <span>Welcome, <strong>{successUser.name}</strong>!</span>
-            </div>
-            <span className="badge badge-primary">{successUser.role}</span>
-          </div>
+          <Alert
+            type="success"
+            title={`Welcome back, ${successUser.name}!`}
+            message={`Authenticating as ${successUser.role}. Redirecting to your dashboard...`}
+          />
         )}
 
         {/* 1-Click Fast Test Credential Switcher */}
@@ -143,9 +133,12 @@ export const LoginPage = () => {
             color: 'var(--text-subtle)',
             marginBottom: '0.5rem',
             textTransform: 'uppercase',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.05em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.3rem'
           }}>
-            ⚡ 1-Click Role Login Fill:
+            <Sparkles size={12} color="#f59e0b" /> Fast Role Auto-Fill:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
             <button
@@ -185,42 +178,39 @@ export const LoginPage = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Mail size={14} /> Email Address
-            </label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="user@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
+          <InputField
+            label="Email Address"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="user@example.com"
+            icon={Mail}
+            required
+            autoComplete="email"
+          />
 
-          <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Lock size={14} /> Password
-            </label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <InputField
+            label="Password"
+            name="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            icon={Lock}
+            required
+            autoComplete="current-password"
+          />
 
-          <button
+          <Button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem' }}
-            disabled={loading}
+            variant="primary"
+            size="lg"
+            loading={loading}
+            style={{ width: '100%', marginTop: '0.5rem' }}
           >
-            {loading ? 'Verifying Credentials...' : 'Sign In with JWT'}
-          </button>
+            Sign In with JWT
+          </Button>
         </form>
 
         {/* Footer Registration Link */}

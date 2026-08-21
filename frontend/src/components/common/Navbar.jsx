@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Star, ShieldCheck, Store, User, LogOut, Cpu, LayoutDashboard, LogIn, UserPlus } from 'lucide-react';
+import { Star, ShieldCheck, Store, User, LogOut, LayoutDashboard, LogIn, UserPlus, Shield, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { healthService } from '../../services/healthService';
 import { StatusBadge } from './StatusBadge';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, isAdmin, isStoreOwner, isNormalUser } = useAuth();
   const location = useLocation();
 
   const [healthStatus, setHealthStatus] = useState({
@@ -28,7 +28,7 @@ export const Navbar = () => {
         latency,
         isChecking: false
       });
-    } catch (err) {
+    } catch {
       setHealthStatus({
         isOnline: false,
         dbConnected: false,
@@ -48,21 +48,21 @@ export const Navbar = () => {
     switch (role) {
       case 'SYSTEM_ADMIN':
         return (
-          <span className="badge badge-primary">
-            <ShieldCheck size={12} /> Admin
+          <span className="badge badge-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Shield size={12} /> Admin
           </span>
         );
       case 'STORE_OWNER':
         return (
-          <span className="badge badge-cyan">
+          <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <Store size={12} /> Owner
           </span>
         );
       case 'NORMAL_USER':
       default:
         return (
-          <span className="badge badge-success">
-            <User size={12} /> User
+          <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <User size={12} /> Customer
           </span>
         );
     }
@@ -113,7 +113,7 @@ export const Navbar = () => {
               Store<span style={{ color: '#818cf8' }}>Rating</span>
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-              Full-Stack Foundation v1.0
+              Full-Stack Platform v1.0
             </div>
           </div>
         </Link>
@@ -128,30 +128,65 @@ export const Navbar = () => {
           />
         </div>
 
-        {/* Nav Links */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Navigation Menu */}
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <Link
-            to="/"
-            className={`btn btn-sm ${location.pathname === '/' ? 'btn-secondary' : ''}`}
-            style={{ color: location.pathname === '/' ? '#fff' : 'var(--text-muted)' }}
+            to="/stores"
+            className={`btn btn-sm ${location.pathname === '/stores' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ color: location.pathname === '/stores' ? '#fff' : 'var(--text-muted)' }}
           >
-            <Cpu size={14} /> Foundation
+            <ShoppingBag size={14} /> Stores
           </Link>
 
           <Link
             to="/dashboard-preview"
-            className={`btn btn-sm ${location.pathname === '/dashboard-preview' ? 'btn-secondary' : ''}`}
+            className={`btn btn-sm ${location.pathname === '/dashboard-preview' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ color: location.pathname === '/dashboard-preview' ? '#fff' : 'var(--text-muted)' }}
           >
-            <LayoutDashboard size={14} /> Roles Preview
+            <LayoutDashboard size={14} /> Roles Overview
           </Link>
 
+          {/* Role Dedicated Links */}
+          {isAuthenticated && (
+            <>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className={`btn btn-sm ${location.pathname === '/admin' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ color: location.pathname === '/admin' ? '#fff' : '#818cf8', fontWeight: 600 }}
+                >
+                  <Shield size={14} /> Admin Area
+                </Link>
+              )}
+
+              {isStoreOwner && (
+                <Link
+                  to="/owner"
+                  className={`btn btn-sm ${location.pathname === '/owner' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ color: location.pathname === '/owner' ? '#fff' : '#fbbf24', fontWeight: 600 }}
+                >
+                  <Store size={14} /> Merchant Area
+                </Link>
+              )}
+
+              {isNormalUser && (
+                <Link
+                  to="/user"
+                  className={`btn btn-sm ${location.pathname === '/user' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ color: location.pathname === '/user' ? '#fff' : '#34d399', fontWeight: 600 }}
+                >
+                  <User size={14} /> My Ratings
+                </Link>
+              )}
+            </>
+          )}
+
           {isAuthenticated ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginLeft: '0.4rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.65rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {getRoleBadge(user?.role)}
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc' }}>
-                  {user?.name || user?.email}
+                  {user?.name?.split(' ')[0] || user?.email}
                 </span>
               </div>
               <button
@@ -164,7 +199,7 @@ export const Navbar = () => {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.4rem' }}>
               <Link to="/login" className="btn btn-secondary btn-sm">
                 <LogIn size={14} /> Login
               </Link>
