@@ -49,6 +49,7 @@ const buildPaginationMeta = (totalItems, page, limit) => {
   return {
     totalItems,
     itemsPerPage: limit,
+    pageSize: limit,
     limit,
     currentPage: page,
     page,
@@ -56,10 +57,12 @@ const buildPaginationMeta = (totalItems, page, limit) => {
     hasNextPage: page < totalPages,
     hasPrevPage: page > 1,
     pagination: {
+      page,
+      pageSize: limit,
       totalItems,
+      totalPages,
       itemsPerPage: limit,
       currentPage: page,
-      totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1
     }
