@@ -14,28 +14,28 @@ router.use(authenticate);
 /**
  * @route   GET /api/v1/users
  * @desc    Get paginated users list (search, role filter, sort)
- * @access  Private (SYSTEM_ADMIN)
+ * @access  Private (SYSTEM_ADMIN only)
  */
 router.get('/', authorize(ROLES.SYSTEM_ADMIN), validate(userQueryValidator), getUsers);
 
 /**
  * @route   GET /api/v1/users/:id
  * @desc    Get user by ID
- * @access  Private (SYSTEM_ADMIN or Owner)
+ * @access  Private (SYSTEM_ADMIN only)
  */
-router.get('/:id', validate(userIdParamValidator), getUserById);
+router.get('/:id', authorize(ROLES.SYSTEM_ADMIN), validate(userIdParamValidator), getUserById);
 
 /**
  * @route   PATCH /api/v1/users/:id
  * @desc    Update user profile or role
- * @access  Private (SYSTEM_ADMIN or Owner)
+ * @access  Private (SYSTEM_ADMIN only)
  */
-router.patch('/:id', validate(userIdParamValidator.concat(updateUserValidator)), updateUser);
+router.patch('/:id', authorize(ROLES.SYSTEM_ADMIN), validate(userIdParamValidator.concat(updateUserValidator)), updateUser);
 
 /**
  * @route   DELETE /api/v1/users/:id
- * @desc    Delete user
- * @access  Private (SYSTEM_ADMIN)
+ * @desc    Delete user account
+ * @access  Private (SYSTEM_ADMIN only)
  */
 router.delete('/:id', authorize(ROLES.SYSTEM_ADMIN), validate(userIdParamValidator), deleteUser);
 
