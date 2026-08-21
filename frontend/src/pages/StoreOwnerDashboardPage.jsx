@@ -27,7 +27,7 @@ import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { ChangePasswordModal } from '../components/auth/ChangePasswordModal';
-import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
+import { ParticleCard } from '../components/common/MagicBento';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -251,7 +251,15 @@ export const StoreOwnerDashboardPage = () => {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
       {/* 1. STORE INFORMATION OVERVIEW */}
-      <div className="glass-card" style={{ padding: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+      <ParticleCard
+        className="glass-card"
+        glowColor="99, 102, 241"
+        enableTilt={true}
+        enableMagnetism={true}
+        clickEffect={true}
+        enableBorderGlow={true}
+        style={{ padding: '1.5rem', position: 'relative', overflow: 'hidden' }}
+      >
         <div style={{
           position: 'absolute',
           top: '-20px',
@@ -265,7 +273,17 @@ export const StoreOwnerDashboardPage = () => {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <GlassIcon icon={<Building size={26} />} color="indigo" size="lg" label="Store" />
+            <div style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+              padding: '16px',
+              borderRadius: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)'
+            }}>
+              <Building size={32} color="#ffffff" />
+            </div>
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -308,12 +326,19 @@ export const StoreOwnerDashboardPage = () => {
             </div>
           </div>
         </div>
-      </div>
+      </ParticleCard>
 
       {/* 2. RATING SUMMARY KPI CARDS */}
       <div className="grid grid-3" style={{ gap: '1rem' }}>
         {/* KPI 1: Average Rating */}
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="245, 158, 11"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">STORE AVERAGE RATING</div>
@@ -323,7 +348,9 @@ export const StoreOwnerDashboardPage = () => {
                 <span style={{ fontSize: '1rem', color: 'var(--text-subtle)', fontWeight: 400 }}>/ 5.0</span>
               </div>
             </div>
-            <GlassIcon icon={<Award size={18} />} color="amber" size="sm" label="Rating" />
+            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <Award size={22} color="#fbbf24" />
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.75rem' }}>
@@ -339,10 +366,17 @@ export const StoreOwnerDashboardPage = () => {
               Calculated across all reviews
             </span>
           </div>
-        </div>
+        </ParticleCard>
 
         {/* KPI 2: Total Ratings Received */}
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="99, 102, 241"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">TOTAL RATINGS RECEIVED</div>
@@ -350,15 +384,24 @@ export const StoreOwnerDashboardPage = () => {
                 {totalRatingsCount}
               </div>
             </div>
-            <GlassIcon icon={<Users size={18} />} color="blue" size="sm" label="Reviews" />
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <Users size={22} color="#818cf8" />
+            </div>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.75rem' }}>
             Verified customer ratings submitted for your store
           </div>
-        </div>
+        </ParticleCard>
 
         {/* KPI 3: Satisfaction Rate */}
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="16, 185, 129"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">CUSTOMER SATISFACTION</div>
@@ -366,16 +409,18 @@ export const StoreOwnerDashboardPage = () => {
                 {satisfactionRate}%
               </div>
             </div>
-            <GlassIcon icon={<TrendingUp size={18} />} color="green" size="sm" label="Satisfaction" />
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <TrendingUp size={22} color="#34d399" />
+            </div>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.75rem' }}>
             Percentage of 4-star and 5-star customer reviews
           </div>
-        </div>
+        </ParticleCard>
       </div>
 
       {/* 3. RATING DISTRIBUTION PROGRESS VISUALIZATION */}
-      <div className="glass-card" style={{ padding: '1.5rem' }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={true} enableBorderGlow={true} style={{ padding: '1.5rem' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <TrendingUp size={18} color="#818cf8" /> Rating Distribution Breakdown
         </h2>
@@ -426,10 +471,10 @@ export const StoreOwnerDashboardPage = () => {
             );
           })}
         </div>
-      </div>
+      </ParticleCard>
 
       {/* 4. USERS WHO RATED THE STORE (TABLE & SEARCH CONTROLS) */}
-      <div className="glass-card" style={{ padding: '1.5rem' }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -627,7 +672,7 @@ export const StoreOwnerDashboardPage = () => {
             itemName="customer ratings"
           />
         </div>
-      </div>
+      </ParticleCard>
 
       {/* Change Password Modal */}
       <ChangePasswordModal

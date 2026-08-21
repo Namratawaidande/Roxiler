@@ -22,7 +22,7 @@ import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { RateStoreModal } from '../components/stores/RateStoreModal';
-import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
+import { ParticleCard } from '../components/common/MagicBento';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -189,7 +189,14 @@ export const NormalUserDashboardPage = () => {
 
       {/* KPI Activity Banner */}
       <div className="grid grid-3" style={{ gap: '1rem' }}>
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="16, 185, 129"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">RATINGS SUBMITTED</div>
@@ -197,14 +204,23 @@ export const NormalUserDashboardPage = () => {
                 {dashboardData.totalRatingsSubmitted}
               </div>
             </div>
-            <GlassIcon icon={<CheckCircle2 size={18} />} color="green" size="sm" label="Submitted" />
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <CheckCircle2 size={22} color="#34d399" />
+            </div>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             Total merchant reviews submitted by your account
           </div>
-        </div>
+        </ParticleCard>
 
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="99, 102, 241"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">AVAILABLE STORES</div>
@@ -212,14 +228,23 @@ export const NormalUserDashboardPage = () => {
                 {meta.totalItems || stores.length}
               </div>
             </div>
-            <GlassIcon icon={<Store size={18} />} color="blue" size="sm" label="Stores" />
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <Store size={22} color="#818cf8" />
+            </div>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             Verified platform merchants open for community ratings
           </div>
-        </div>
+        </ParticleCard>
 
-        <div className="kpi-card glass-card">
+        <ParticleCard
+          className="kpi-card glass-card"
+          glowColor="245, 158, 11"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div className="kpi-label">REVIEW STATUS</div>
@@ -227,12 +252,14 @@ export const NormalUserDashboardPage = () => {
                 {dashboardData.totalRatingsSubmitted > 0 ? 'Active Reviewer' : 'New Member'}
               </div>
             </div>
-            <GlassIcon icon={<Sparkles size={18} />} color="amber" size="sm" label="Status" />
+            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '10px', borderRadius: '12px' }}>
+              <Sparkles size={22} color="#fbbf24" />
+            </div>
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', marginTop: '0.5rem' }}>
             {dashboardData.totalRatingsSubmitted > 0 ? 'Your reviews are helping the community' : 'Submit your first store rating below'}
           </div>
-        </div>
+        </ParticleCard>
       </div>
 
       {/* Navigation Tabs */}
@@ -260,7 +287,7 @@ export const NormalUserDashboardPage = () => {
       {activeTab === 'browse' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Filters Card */}
-          <div className="glass-card" style={{ padding: '1.25rem' }}>
+          <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Filter size={14} /> Search & Filter Stores
@@ -336,17 +363,17 @@ export const NormalUserDashboardPage = () => {
                 </select>
               </div>
             </div>
-          </div>
+          </ParticleCard>
 
           {/* Stores Card Grid */}
           {stores.length === 0 && !storesLoading ? (
-            <div className="glass-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+            <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
               <Store size={48} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.25rem', marginBottom: '0.4rem' }}>No Matching Stores Found</h3>
               <p style={{ color: 'var(--text-subtle)', fontSize: '0.85rem', maxWidth: '420px', margin: '0 auto' }}>
                 No stores match your current filters. Try broadening your search query.
               </p>
-            </div>
+            </ParticleCard>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
               {stores.map((s) => {
@@ -356,9 +383,14 @@ export const NormalUserDashboardPage = () => {
                 const hasUserRated = userRating !== null && userRating !== undefined;
 
                 return (
-                  <div
+                  <ParticleCard
                     key={s.id}
-                    className="glass-card"
+                    className="glass-card store-card"
+                    glowColor={hasUserRated ? '99, 102, 241' : '245, 158, 11'}
+                    enableTilt={true}
+                    enableMagnetism={true}
+                    clickEffect={true}
+                    enableBorderGlow={true}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -468,14 +500,14 @@ export const NormalUserDashboardPage = () => {
                         {hasUserRated ? 'Modify' : 'Rate Store'}
                       </Button>
                     </div>
-                  </div>
+                  </ParticleCard>
                 );
               })}
             </div>
           )}
 
           {/* Pagination Controls */}
-          <div className="glass-card" style={{ padding: 0 }}>
+          <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: 0 }}>
             <Pagination
               currentPage={meta.currentPage || meta.page || page}
               totalPages={meta.totalPages || 1}
@@ -489,13 +521,13 @@ export const NormalUserDashboardPage = () => {
               loading={storesLoading}
               itemName="registered stores"
             />
-          </div>
+          </ParticleCard>
         </div>
       )}
 
       {/* ----------------- TAB 2: MY RATING HISTORY ----------------- */}
       {activeTab === 'history' && (
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
+        <ParticleCard className="glass-card" glowColor="245, 158, 11" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.5rem' }}>
           <h2 style={{ fontSize: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Star size={18} color="#fbbf24" fill="#fbbf24" /> Your Submitted Store Reviews ({dashboardData.myRatings.length})
           </h2>
@@ -589,7 +621,7 @@ export const NormalUserDashboardPage = () => {
               ))}
             </div>
           )}
-        </div>
+        </ParticleCard>
       )}
 
       {/* Interactive Rating Modal */}

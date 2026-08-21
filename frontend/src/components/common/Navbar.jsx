@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Star, Store, User, LogOut, LogIn, UserPlus, Shield, ShoppingBag, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
-import { Button } from './Button';
-import { GlassIcon } from './GlassIcons';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout, isAdmin, isStoreOwner, isNormalUser } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const getRoleBadge = (role) => {
@@ -65,7 +62,18 @@ export const Navbar = () => {
       }}>
         {/* Brand Logo */}
         <Link to={getHomeLink()} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none' }}>
-          <GlassIcon icon={<Star size={18} fill="#fff" />} color="indigo" size="sm" style={{ pointerEvents: 'none' }} />
+          <div style={{
+            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)'
+          }}>
+            <Star size={20} color="#fff" fill="#fff" />
+          </div>
           <div>
             <div style={{
               fontFamily: 'var(--font-heading)',
@@ -167,45 +175,41 @@ export const Navbar = () => {
                     {user?.name?.split(' ')[0] || user?.email}
                   </span>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => setIsPasswordModalOpen(true)}
+                  className="btn btn-secondary btn-sm"
                   title="Change Password"
-                  icon={KeyRound}
-                  radius={8}
-                  style={{ padding: '0.4rem 0.6rem' }}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
+                  style={{ padding: '0.35rem 0.65rem' }}
+                >
+                  <KeyRound size={14} />
+                </button>
+                <button
+                  type="button"
                   onClick={logout}
+                  className="btn btn-secondary btn-sm"
                   title="Logout"
-                  icon={LogOut}
-                  radius={8}
-                  style={{ padding: '0.4rem 0.6rem' }}
-                />
+                  style={{ padding: '0.35rem 0.65rem' }}
+                >
+                  <LogOut size={14} />
+                </button>
               </div>
             </>
           ) : (
             /* Unauthenticated Navigation: Clean Login & Register only */
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-              <Button
-                variant={location.pathname === '/login' || location.pathname === '/' ? 'primary' : 'secondary'}
-                size="sm"
-                icon={LogIn}
-                onClick={() => navigate('/login')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Link
+                to="/login"
+                className={`btn btn-sm ${location.pathname === '/login' || location.pathname === '/' ? 'btn-primary' : 'btn-secondary'}`}
               >
-                Login
-              </Button>
-              <Button
-                variant={location.pathname === '/register' ? 'primary' : 'secondary'}
-                size="sm"
-                icon={UserPlus}
-                onClick={() => navigate('/register')}
+                <LogIn size={14} /> Login
+              </Link>
+              <Link
+                to="/register"
+                className={`btn btn-sm ${location.pathname === '/register' ? 'btn-primary' : 'btn-secondary'}`}
               >
-                Register
-              </Button>
+                <UserPlus size={14} /> Register
+              </Link>
             </div>
           )}
         </nav>

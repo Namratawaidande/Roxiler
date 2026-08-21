@@ -22,6 +22,7 @@ import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { AddStoreModal } from '../components/admin/AddStoreModal';
 import { StoreDetailsModal } from '../components/admin/StoreDetailsModal';
+import { ParticleCard } from '../components/common/MagicBento';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -178,7 +179,7 @@ export const AdminStoresPage = () => {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
       {/* Multi-Dimensional Filter Card */}
-      <div className="glass-card" style={{ padding: '1.25rem' }}>
+      <ParticleCard className="glass-card" glowColor="6, 182, 212" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Filter size={14} /> Filters
@@ -247,10 +248,10 @@ export const AdminStoresPage = () => {
             />
           </div>
         </div>
-      </div>
+      </ParticleCard>
 
       {/* Stores Table */}
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <ParticleCard className="glass-card" glowColor="6, 182, 212" enableTilt={false} enableBorderGlow={true} style={{ padding: 0, overflow: 'hidden' }}>
         {stores.length === 0 && !loading ? (
           <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
             <Store size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
@@ -377,7 +378,7 @@ export const AdminStoresPage = () => {
           loading={loading}
           itemName="registered stores"
         />
-      </div>
+      </ParticleCard>
 
       {/* Add Store Modal */}
       <AddStoreModal

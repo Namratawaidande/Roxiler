@@ -20,6 +20,7 @@ import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { AddUserModal } from '../components/admin/AddUserModal';
 import { UserDetailsModal } from '../components/admin/UserDetailsModal';
+import { ParticleCard } from '../components/common/MagicBento';
 import { useDebounce } from '../hooks/useDebounce';
 import api from '../services/api';
 
@@ -191,7 +192,7 @@ export const AdminUsersPage = () => {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
       {/* Multi-Dimensional Filter Card */}
-      <div className="glass-card" style={{ padding: '1.25rem' }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Filter size={14} /> Filters
@@ -277,10 +278,10 @@ export const AdminUsersPage = () => {
             </select>
           </div>
         </div>
-      </div>
+      </ParticleCard>
 
       {/* Users Table */}
-      <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: 0, overflow: 'hidden' }}>
         {users.length === 0 && !loading ? (
           <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
             <Users size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
@@ -395,7 +396,7 @@ export const AdminUsersPage = () => {
           loading={loading}
           itemName="registered users"
         />
-      </div>
+      </ParticleCard>
 
       {/* Add User Modal */}
       <AddUserModal

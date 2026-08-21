@@ -6,7 +6,7 @@ import { authService } from '../services/authService';
 import { InputField } from '../components/forms/InputField';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
-import { GlassIcon } from '../components/common/GlassIcons';
+import { ParticleCard } from '../components/common/MagicBento';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -95,11 +95,28 @@ export const LoginPage = () => {
 
   return (
     <div style={{ maxWidth: '480px', margin: '2rem auto' }}>
-      <div className="glass-card">
+      <ParticleCard
+        className="glass-card"
+        glowColor="99, 102, 241"
+        enableTilt={true}
+        enableMagnetism={true}
+        clickEffect={true}
+        enableBorderGlow={true}
+      >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-            <GlassIcon icon={<LogIn size={22} />} color="indigo" size="lg" label="Sign In" />
+          <div style={{
+            width: '50px',
+            height: '50px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '1rem',
+            boxShadow: '0 0 25px rgba(99, 102, 241, 0.45)'
+          }}>
+            <LogIn size={24} color="#fff" />
           </div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.35rem' }}>Unified Portal Login</h1>
           <p style={{ fontSize: '0.875rem' }}>Single sign-in for Administrators, Store Owners & Users</p>
@@ -129,61 +146,45 @@ export const LoginPage = () => {
             fontSize: '0.72rem',
             fontWeight: 600,
             color: 'var(--text-subtle)',
-            marginBottom: '0.5rem',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
+            marginBottom: '0.5rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.3rem'
+            gap: '0.35rem'
           }}>
-            <Sparkles size={12} color="#f59e0b" /> Fast Role Auto-Fill:
+            <Sparkles size={13} color="#818cf8" /> Fast Role-Login Switcher
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
-            <Button
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
-              icon={Shield}
               onClick={() => fillQuickDemo('SYSTEM_ADMIN')}
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.72rem', padding: '0.35rem 0.2rem', justifyContent: 'center' }}
             >
-              Admin (System Admin)
-            </Button>
-            <Button
+              <Shield size={12} color="#818cf8" /> Admin
+            </button>
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
-              icon={Store}
               onClick={() => fillQuickDemo('STORE_OWNER_1')}
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.72rem', padding: '0.35rem 0.2rem', justifyContent: 'center' }}
             >
-              Owner (Alice Storekeeper)
-            </Button>
-            <Button
+              <Store size={12} color="#f59e0b" /> Store 1
+            </button>
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
-              icon={Store}
-              onClick={() => fillQuickDemo('STORE_OWNER_2')}
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
-            >
-              Owner (Marcus Vance)
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              icon={User}
               onClick={() => fillQuickDemo('NORMAL_USER')}
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.72rem', padding: '0.35rem 0.2rem', justifyContent: 'center' }}
             >
-              User (John Doe)
-            </Button>
+              <User size={12} color="#10b981" /> User
+            </button>
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <InputField
             label="Email Address"
             name="email"
@@ -226,7 +227,7 @@ export const LoginPage = () => {
             Register as Normal User
           </Link>
         </div>
-      </div>
+      </ParticleCard>
     </div>
   );
 };

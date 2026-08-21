@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
-import { GlassIcon, GlassIcons } from '../components/common/GlassIcons';
+import { ParticleCard } from '../components/common/MagicBento';
 import api from '../services/api';
 
 export const AdminDashboardPage = () => {
@@ -86,12 +86,22 @@ export const AdminDashboardPage = () => {
       {/* Primary KPI Statistics Grid */}
       <div className="grid grid-4">
         {/* Total Users */}
-        <div className="glass-card" style={{ borderLeft: '4px solid #6366f1' }}>
+        <ParticleCard
+          className="glass-card"
+          glowColor="99, 102, 241"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+          style={{ borderLeft: '4px solid #6366f1' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               TOTAL USERS
             </span>
-            <GlassIcon icon={<Users size={16} />} color="indigo" size="sm" label="Users" />
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '6px', borderRadius: '8px' }}>
+              <Users size={18} color="#818cf8" />
+            </div>
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalUsers ?? 0}
@@ -99,15 +109,25 @@ export const AdminDashboardPage = () => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.4rem' }}>
             Across all 3 registered roles
           </div>
-        </div>
+        </ParticleCard>
 
         {/* Total Stores */}
-        <div className="glass-card" style={{ borderLeft: '4px solid #06b6d4' }}>
+        <ParticleCard
+          className="glass-card"
+          glowColor="6, 182, 212"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+          style={{ borderLeft: '4px solid #06b6d4' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               TOTAL STORES
             </span>
-            <GlassIcon icon={<Building size={16} />} color="cyan" size="sm" label="Stores" />
+            <div style={{ background: 'rgba(6, 182, 212, 0.15)', padding: '6px', borderRadius: '8px' }}>
+              <Building size={18} color="#06b6d4" />
+            </div>
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalStores ?? 0}
@@ -115,15 +135,25 @@ export const AdminDashboardPage = () => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.4rem' }}>
             Verified merchant store listings
           </div>
-        </div>
+        </ParticleCard>
 
         {/* Total Ratings */}
-        <div className="glass-card" style={{ borderLeft: '4px solid #10b981' }}>
+        <ParticleCard
+          className="glass-card"
+          glowColor="16, 185, 129"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+          style={{ borderLeft: '4px solid #10b981' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               SUBMITTED RATINGS
             </span>
-            <GlassIcon icon={<Star size={16} />} color="green" size="sm" label="Ratings" />
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', padding: '6px', borderRadius: '8px' }}>
+              <Star size={18} color="#10b981" />
+            </div>
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#f8fafc' }}>
             {loading ? '...' : stats?.totalRatings ?? 0}
@@ -131,15 +161,25 @@ export const AdminDashboardPage = () => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.4rem' }}>
             Submitted by verified normal users
           </div>
-        </div>
+        </ParticleCard>
 
         {/* Average Platform Score */}
-        <div className="glass-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+        <ParticleCard
+          className="glass-card"
+          glowColor="245, 158, 11"
+          enableTilt={true}
+          enableMagnetism={true}
+          clickEffect={true}
+          enableBorderGlow={true}
+          style={{ borderLeft: '4px solid #f59e0b' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)', fontWeight: 700, letterSpacing: '0.05em' }}>
               AVG PLATFORM SCORE
             </span>
-            <GlassIcon icon={<BarChart3 size={16} />} color="orange" size="sm" label="Score" />
+            <div style={{ background: 'rgba(245, 158, 11, 0.15)', padding: '6px', borderRadius: '8px' }}>
+              <BarChart3 size={18} color="#f59e0b" />
+            </div>
           </div>
           <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <Star size={24} fill="#fbbf24" />
@@ -148,7 +188,7 @@ export const AdminDashboardPage = () => {
           <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.4rem' }}>
             Platform customer satisfaction index
           </div>
-        </div>
+        </ParticleCard>
       </div>
 
       {/* Admin Sub-Navigation Tabs */}
@@ -186,7 +226,7 @@ export const AdminDashboardPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div className="grid grid-2">
             {/* Rating Distribution Breakdown */}
-            <div className="glass-card">
+            <ParticleCard className="glass-card" glowColor="16, 185, 129" enableTilt={true} enableBorderGlow={true}>
               <h2 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <TrendingUp size={18} color="#10b981" /> Rating Distribution Breakdown
               </h2>
@@ -223,10 +263,10 @@ export const AdminDashboardPage = () => {
                   );
                 })}
               </div>
-            </div>
+            </ParticleCard>
 
             {/* Role Breakdown Distribution */}
-            <div className="glass-card">
+            <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={true} enableBorderGlow={true}>
               <h2 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Layers size={18} color="#818cf8" /> Platform Roles Breakdown
               </h2>
@@ -295,14 +335,14 @@ export const AdminDashboardPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </ParticleCard>
           </div>
         </div>
       )}
 
       {/* TAB 2: USER MANAGEMENT DIRECTORY */}
       {activeTab === 'users' && (
-        <div className="glass-card">
+        <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               <Users size={18} color="#818cf8" /> Recent Registered Platform Users
@@ -344,12 +384,12 @@ export const AdminDashboardPage = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </ParticleCard>
       )}
 
       {/* TAB 3: STORE MANAGEMENT OVERSIGHT */}
       {activeTab === 'stores' && (
-        <div className="glass-card">
+        <ParticleCard className="glass-card" glowColor="6, 182, 212" enableTilt={false} enableBorderGlow={true}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <h2 style={{ fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               <Store size={18} color="#06b6d4" /> Store Catalog Oversight ({recentStores.length})
@@ -366,15 +406,23 @@ export const AdminDashboardPage = () => {
 
           <div className="grid grid-3">
             {recentStores.map((s) => (
-              <div key={s.id} style={{
-                background: 'rgba(15, 23, 42, 0.6)',
-                padding: '1rem',
-                borderRadius: '10px',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
+              <ParticleCard
+                key={s.id}
+                glowColor="6, 182, 212"
+                enableTilt={true}
+                enableMagnetism={true}
+                clickEffect={true}
+                enableBorderGlow={true}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                     <h3 style={{ fontSize: '1.05rem', color: '#f8fafc', fontWeight: 700 }}>{s.name}</h3>
@@ -395,10 +443,10 @@ export const AdminDashboardPage = () => {
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
                   Total Ratings: <strong>{s.ratingCount || 0}</strong>
                 </div>
-              </div>
+              </ParticleCard>
             ))}
           </div>
-        </div>
+        </ParticleCard>
       )}
     </div>
   );

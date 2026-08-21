@@ -8,7 +8,7 @@ import { TextareaField } from '../components/forms/TextareaField';
 import { PasswordStrengthMeter } from '../components/forms/PasswordStrengthMeter';
 import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
-import { GlassIcon } from '../components/common/GlassIcons';
+import { ParticleCard } from '../components/common/MagicBento';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -48,12 +48,12 @@ export const RegisterPage = () => {
   };
 
   const handleFillSample = () => {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const randomSuffix = Math.floor(100 + Math.random() * 900);
     setFormData({
-      name: `Demo User ${randomNum} Platform`,
-      email: `customer${randomNum}@example.com`,
-      password: 'User@123456',
-      address: '742 Evergreen Terrace, Sector 4, Silicon Valley'
+      name: 'Alexander Montgomery Wright',
+      email: `alex.wright${randomSuffix}@example.com`,
+      password: 'SecureUser@123',
+      address: '742 Evergreen Terrace, Sector 4, Springfield'
     });
     setError(null);
   };
@@ -62,16 +62,32 @@ export const RegisterPage = () => {
     e.preventDefault();
     setError(null);
     setSuccessMsg(null);
+
+    // Client-side pre-validation
+    if (!isNameValid) {
+      setError(`Full Name must be between 20 and 60 characters long (currently ${nameLength} characters).`);
+      return;
+    }
+
+    if (!isPasswordFullyValid) {
+      setError('Password must be 8-16 characters with at least one uppercase letter and one special character.');
+      return;
+    }
+
+    if (!isAddressValid) {
+      setError('Address cannot exceed 400 characters.');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await authService.register(formData);
       if (response?.data?.token && response?.data?.user) {
-        setSuccessMsg('Account registered successfully! Logging you in...');
         login(response.data.user, response.data.token);
-
+        setSuccessMsg('Normal User account registered successfully! Redirecting...');
         setTimeout(() => {
-          navigate('/stores', { replace: true });
+          navigate('/user', { replace: true });
         }, 800);
       }
     } catch (err) {
@@ -83,11 +99,28 @@ export const RegisterPage = () => {
 
   return (
     <div style={{ maxWidth: '520px', margin: '2rem auto' }}>
-      <div className="glass-card">
+      <ParticleCard
+        className="glass-card"
+        glowColor="16, 185, 129"
+        enableTilt={true}
+        enableMagnetism={true}
+        clickEffect={true}
+        enableBorderGlow={true}
+      >
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-            <GlassIcon icon={<UserPlus size={22} />} color="green" size="lg" label="Register" />
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '0.75rem',
+            boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)'
+          }}>
+            <UserPlus size={24} color="#fff" />
           </div>
           <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Create User Account</h1>
           <p style={{ fontSize: '0.85rem' }}>
@@ -114,21 +147,18 @@ export const RegisterPage = () => {
         {successMsg && <Alert type="success" message={successMsg} />}
 
         {/* Registration Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <InputField
             label="Full Name"
             name="name"
-            type="text"
             value={formData.name}
             onChange={handleChange}
             placeholder="e.g. Alexander Montgomery Wright"
             icon={User}
-            minLength={20}
-            maxLength={60}
-            showCharCount={true}
-            hint="Must be between 20 and 60 characters long."
             required
             autoComplete="name"
+            helperText={`${nameLength}/60 characters (Minimum 20 characters required)`}
+            hasError={nameLength > 0 && !isNameValid}
           />
 
           <InputField
@@ -137,30 +167,34 @@ export const RegisterPage = () => {
             type="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="user@example.com"
+            placeholder="alex.wright@example.com"
             icon={Mail}
             required
             autoComplete="email"
           />
 
-          <div style={{ marginBottom: '1.25rem' }}>
+          <div>
             <InputField
               label="Password"
               name="password"
               type="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="8 to 16 characters"
+              placeholder="••••••••"
               icon={Lock}
-              maxLength={16}
               required
               autoComplete="new-password"
+              hasError={formData.password.length > 0 && !isPasswordFullyValid}
             />
-            <PasswordStrengthMeter password={formData.password} />
+
+            {/* Visual Password Strength & Constraint Checklist */}
+            <div style={{ marginTop: '0.5rem' }}>
+              <PasswordStrengthMeter password={formData.password} />
+            </div>
           </div>
 
           <TextareaField
-            label="Address (Optional)"
+            label="Physical Address"
             name="address"
             value={formData.address}
             onChange={handleChange}
@@ -187,7 +221,7 @@ export const RegisterPage = () => {
             Sign In with Existing Account
           </Link>
         </div>
-      </div>
+      </ParticleCard>
     </div>
   );
 };

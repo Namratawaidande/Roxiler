@@ -18,6 +18,7 @@ import { Button } from '../components/common/Button';
 import { Alert } from '../components/common/Alert';
 import { Pagination } from '../components/common/Pagination';
 import { RateStoreModal } from '../components/stores/RateStoreModal';
+import { ParticleCard } from '../components/common/MagicBento';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -157,7 +158,7 @@ export const StoreListPage = () => {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
 
       {/* Filter and Sorting Control Bar */}
-      <div className="glass-card" style={{ padding: '1.25rem' }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <Filter size={14} /> Search & Filter Stores
@@ -237,17 +238,17 @@ export const StoreListPage = () => {
             </select>
           </div>
         </div>
-      </div>
+      </ParticleCard>
 
       {/* Stores Card Grid */}
       {stores.length === 0 && !loading ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
           <Store size={48} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
           <h3 style={{ fontSize: '1.25rem', marginBottom: '0.4rem' }}>No Matching Stores Found</h3>
           <p style={{ color: 'var(--text-subtle)', fontSize: '0.85rem', maxWidth: '420px', margin: '0 auto' }}>
             We couldn't find any stores matching your current search parameters. Try adjusting your keywords.
           </p>
-        </div>
+        </ParticleCard>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {stores.map((s) => {
@@ -257,9 +258,14 @@ export const StoreListPage = () => {
             const hasUserRated = userRating !== null && userRating !== undefined;
 
             return (
-              <div
+              <ParticleCard
                 key={s.id}
-                className="glass-card"
+                className="glass-card store-card"
+                glowColor={hasUserRated ? '99, 102, 241' : '245, 158, 11'}
+                enableTilt={true}
+                enableMagnetism={true}
+                clickEffect={true}
+                enableBorderGlow={true}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -305,21 +311,21 @@ export const StoreListPage = () => {
                     </div>
                   </div>
 
-                  {/* Address */}
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-subtle)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  {/* Store Location */}
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-subtle)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <MapPin size={13} style={{ flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {s.address}
                     </span>
                   </div>
 
-                  {/* Community Reviews Count */}
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                    Community Feedback: <strong>{reviewCount} submitted review{reviewCount === 1 ? '' : 's'}</strong>
+                  {/* Rating Counts Feedback */}
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                    Community Reviews: <strong>{reviewCount} rating{reviewCount === 1 ? '' : 's'}</strong>
                   </div>
                 </div>
 
-                {/* User's Rating Status & Action */}
+                {/* Personal Rating Status & Submission Button */}
                 <div style={{
                   background: hasUserRated ? 'rgba(99, 102, 241, 0.12)' : 'rgba(15, 23, 42, 0.6)',
                   border: hasUserRated ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid var(--border-color)',
@@ -370,14 +376,14 @@ export const StoreListPage = () => {
                     {hasUserRated ? 'Modify' : 'Rate Store'}
                   </Button>
                 </div>
-              </div>
+              </ParticleCard>
             );
           })}
         </div>
       )}
 
       {/* Pagination Controls */}
-      <div className="glass-card" style={{ padding: 0 }}>
+      <ParticleCard className="glass-card" glowColor="99, 102, 241" enableTilt={false} enableBorderGlow={true} style={{ padding: 0 }}>
         <Pagination
           currentPage={meta.currentPage || meta.page || page}
           totalPages={meta.totalPages || 1}
@@ -391,7 +397,7 @@ export const StoreListPage = () => {
           loading={loading}
           itemName="registered stores"
         />
-      </div>
+      </ParticleCard>
 
       {/* Interactive Rating Modal */}
       <RateStoreModal
