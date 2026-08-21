@@ -346,6 +346,123 @@ class RatingService {
       meta: buildPaginationMeta(totalItems, page, limit)
     };
   }
+
+  /**
+   * Get Store Owner Rating Statistics (STORE_OWNER only)
+   * Calculates overall average rating, total ratings count, and 5-tier star distribution
+   */
+  async getStoreOwnerRatingStats(ownerId) {
+    const numericOwnerId = parseInt(ownerId, 10);
+
+    if (db.getStatus().connected) {
+      // 1. Fetch stores owned by merchant
+      const storesRes = await db.query(
+        `SELECT id, name, email, address, created_at FROM stores WHERE owner_id = $1 ORDER BY created_at DESC`,
+        [numericOwnerId]
+      );
+
+      const stores = storesRes.rows;
+      const storeIds = stores.map((s) => s.id);
+
+      if (storeIds.length === 0) {
+        return {
+          ownerId: numericOwnerId,
+          totalStores: 0,
+          totalRatings: 0,
+          totalRatingsReceived: 0,
+          averageRating: 0.0,
+          overallRating: 0.0,
+          ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+          stores: []
+        };
+      }
+
+      // 2. Fetch Aggregated Metrics
+      const aggRes = await db.query(
+        `SELECT 
+           COALESCE(ROUND(AVG(r.rating_value)::numeric, 1), 0.0)::float as "averageRating",
+           COUNT(r.id)::int as "totalRatings"
+         FROM ratings r
+         JOIN stores s ON r.store_id = s.id
+         WHERE s.owner_id = $1`,
+        [numericOwnerId]
+      );
+
+      // 3. Fetch Star Breakdown (5, 4, 3, 2, 1)
+      const distRes = await db.query(
+        `SELECT r.rating_value, COUNT(r.id)::int as count
+         FROM ratings r
+         JOIN stores s ON r.store_id = s.id
+         WHERE s.owner_id = $1
+         GROUP BY r.rating_value
+         ORDER BY r.rating_value DESC`,
+        [numericOwnerId]
+      );
+
+      const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+      distRes.rows.forEach((row) => {
+        ratingDistribution[row.rating_value] = row.count;
+      });
+
+      const totalRatings = aggRes.rows[0].totalRatings || 0;
+      const averageRating = aggRes.rows[0].averageRating || 0.0;
+
+      return {
+        ownerId: numericOwnerId,
+        totalStores: stores.length,
+        totalRatings,
+        totalRatingsReceived: totalRatings,
+        averageRating,
+        overallRating: averageRating,
+        ratingDistribution,
+        stores
+      };
+    }
+
+    // Mock Fallback
+    if (numericOwnerId === 2) {
+      return {
+        ownerId: 2,
+        totalStores: 2,
+        totalRatings: 210,
+        totalRatingsReceived: 210,
+        averageRating: 4.7,
+        overallRating: 4.7,
+        ratingDistribution: { 5: 150, 4: 45, 3: 10, 2: 3, 1: 2 },
+        stores: [
+          { id: 1, name: 'Apex Digital & Electronics Flagship', address: '101 Tech Avenue, Silicon Bay' },
+          { id: 3, name: 'Apex Mobile & Gadgets Express', address: '240 Innovation Way, Silicon Bay' }
+        ]
+      };
+    }
+
+    if (numericOwnerId === 3) {
+      return {
+        ownerId: 3,
+        totalStores: 1,
+        totalRatings: 210,
+        totalRatingsReceived: 210,
+        averageRating: 4.9,
+        overallRating: 4.9,
+        ratingDistribution: { 5: 190, 4: 18, 3: 2, 2: 0, 1: 0 },
+        stores: [
+          { id: 2, name: 'Urban Gourmet & Artisan Market', address: '220 Culinary Lane, Downtown Plaza' }
+        ]
+      };
+    }
+
+    // Generic unrated owner fallback
+    return {
+      ownerId: numericOwnerId,
+      totalStores: 0,
+      totalRatings: 0,
+      totalRatingsReceived: 0,
+      averageRating: 0.0,
+      overallRating: 0.0,
+      ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+      stores: []
+    };
+  }
 }
 
 const ratingService = new RatingService();

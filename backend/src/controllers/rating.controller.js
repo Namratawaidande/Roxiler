@@ -29,8 +29,18 @@ const getStoreOwnerRatings = asyncHandler(async (req, res) => {
   return ApiResponse.success(res, { ratings: result.ratings }, 'Store customer ratings retrieved successfully.', 200, result.meta);
 });
 
+/**
+ * Get Store Owner Rating Statistics & Breakdown (STORE_OWNER only)
+ * GET /api/v1/ratings/owner/stats
+ */
+const getStoreOwnerRatingStats = asyncHandler(async (req, res) => {
+  const stats = await ratingService.getStoreOwnerRatingStats(req.user.id);
+  return ApiResponse.success(res, stats, 'Store rating statistics retrieved successfully.');
+});
+
 module.exports = {
   submitRating,
   updateRating,
-  getStoreOwnerRatings
+  getStoreOwnerRatings,
+  getStoreOwnerRatingStats
 };

@@ -1,5 +1,10 @@
 const express = require('express');
-const { submitRating, updateRating, getStoreOwnerRatings } = require('../controllers/rating.controller');
+const {
+  submitRating,
+  updateRating,
+  getStoreOwnerRatings,
+  getStoreOwnerRatingStats
+} = require('../controllers/rating.controller');
 const { createRatingValidator, updateRatingValidator, storeIdParamValidator } = require('../validators/rating.validator');
 const { validate } = require('../middleware/validate.middleware');
 const { authenticate } = require('../middleware/auth.middleware');
@@ -18,6 +23,18 @@ router.get(
   authenticate,
   authorize(ROLES.STORE_OWNER),
   getStoreOwnerRatings
+);
+
+/**
+ * @route   GET /api/v1/ratings/owner/stats
+ * @desc    Get rating statistics & 5-star distribution for authenticated STORE_OWNER
+ * @access  Private (STORE_OWNER only)
+ */
+router.get(
+  '/owner/stats',
+  authenticate,
+  authorize(ROLES.STORE_OWNER),
+  getStoreOwnerRatingStats
 );
 
 /**
