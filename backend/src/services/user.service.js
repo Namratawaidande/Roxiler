@@ -180,17 +180,66 @@ class UserService {
   }
 
   /**
-   * Get single user by ID
+   * Get single user by ID (Enriched with role-specific details: store ratings for STORE_OWNER, review totals for NORMAL_USER)
    */
   async getUserById(id) {
     const numericId = parseInt(id, 10);
 
     if (db.getStatus().connected) {
-      const res = await db.query('SELECT id, name, email, address, role, created_at, updated_at FROM users WHERE id = $1', [numericId]);
+      const res = await db.query(
+        'SELECT id, name, email, address, role, created_at, updated_at FROM users WHERE id = $1',
+        [numericId]
+      );
       if (res.rows.length === 0) {
         throw new NotFoundError(`User with ID ${id} not found.`);
       }
-      return res.rows[0];
+
+      const user = res.rows[0];
+
+      // Role-specific data enrichment
+      if (user.role === ROLES.STORE_OWNER) {
+        const storesRes = await db.query(
+          `SELECT 
+             s.id,
+             s.name,
+             s.email,
+             s.address,
+             s.created_at,
+             COALESCE(ROUND(AVG(r.rating_value)::numeric, 1), 0.0)::float as "averageRating",
+             COUNT(r.id)::int as "ratingCount"
+           FROM stores s
+           LEFT JOIN ratings r ON s.id = r.store_id
+           WHERE s.owner_id = $1
+           GROUP BY s.id
+           ORDER BY s.created_at DESC`,
+          [numericId]
+        );
+
+        user.stores = storesRes.rows;
+        user.totalStoresOwned = storesRes.rows.length;
+      } else if (user.role === ROLES.NORMAL_USER) {
+        const ratingsRes = await db.query(
+          `SELECT 
+             r.id,
+             r.rating_value as rating,
+             r.created_at,
+             s.id as "storeId",
+             s.name as "storeName",
+             s.address as "storeAddress"
+           FROM ratings r
+           JOIN stores s ON r.store_id = s.id
+           WHERE r.user_id = $1
+           ORDER BY r.created_at DESC
+           LIMIT 5`,
+          [numericId]
+        );
+
+        const countRes = await db.query('SELECT COUNT(*)::int as count FROM ratings WHERE user_id = $1', [numericId]);
+        user.totalRatingsSubmitted = countRes.rows[0].count;
+        user.submittedRatings = ratingsRes.rows;
+      }
+
+      return user;
     }
 
     const user = mockUsersList.find((u) => u.id === numericId);
@@ -198,7 +247,56 @@ class UserService {
       throw new NotFoundError(`User with ID ${id} not found.`);
     }
 
-    return user;
+    const enriched = { ...user };
+
+    // Mock role-specific data enrichment
+    if (enriched.role === ROLES.STORE_OWNER) {
+      if (enriched.id === 2) {
+        enriched.stores = [
+          {
+            id: 1,
+            name: 'Apex Digital & Electronics Flagship',
+            email: 'contact@apexdigital.com',
+            address: '101 Tech Avenue, Silicon Bay',
+            averageRating: 4.8,
+            ratingCount: 142
+          },
+          {
+            id: 3,
+            name: 'Apex Mobile & Gadgets Express',
+            email: 'support@apexmobile.com',
+            address: '240 Innovation Way, Silicon Bay',
+            averageRating: 4.3,
+            ratingCount: 68
+          }
+        ];
+      } else {
+        enriched.stores = [
+          {
+            id: 2,
+            name: 'Urban Gourmet & Artisan Market',
+            email: 'hello@urbangourmet.com',
+            address: '220 Culinary Lane, Downtown Plaza',
+            averageRating: 4.9,
+            ratingCount: 210
+          }
+        ];
+      }
+      enriched.totalStoresOwned = enriched.stores.length;
+    } else if (enriched.role === ROLES.NORMAL_USER) {
+      enriched.totalRatingsSubmitted = 2;
+      enriched.submittedRatings = [
+        {
+          id: 1,
+          rating: 5,
+          storeId: 1,
+          storeName: 'Apex Digital & Electronics Flagship',
+          created_at: '2026-01-20T10:00:00.000Z'
+        }
+      ];
+    }
+
+    return enriched;
   }
 
   /**

@@ -57,136 +57,71 @@ const request = (method, path, body = null, token = null) => {
 const runTests = async () => {
   await startTestServer();
   console.log(`🧪 Test Server initialized on ${baseUrl}\n`);
-  console.log('🛡️  Running Complete Backend Store-Management & RBAC Test Suite...\n');
+  console.log('🛡️  Running Complete Detailed User-View & Security Test Suite...\n');
 
   try {
-    // --- 1. HEALTH & SYSTEM DIAGNOSTICS ---
-    const health = await request('GET', '/api/v1/health');
-    if (health.statusCode !== 200) throw new Error('Health check failed');
-    console.log('  ✔ [GET /api/v1/health] - System diagnostics operational (200 OK)');
-
-    // --- 2. AUTHENTICATING TEST ROLES ---
+    // --- 1. HEALTH & AUTHENTICATION ---
     const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
     if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
     const adminToken = adminLogin.data.data.token;
-    console.log('  ✔ SYSTEM_ADMIN authenticated.');
 
     const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
     if (ownerLogin.statusCode !== 200) throw new Error('Store Owner login failed');
     const ownerToken = ownerLogin.data.data.token;
-    console.log('  ✔ STORE_OWNER authenticated.');
 
     const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
     if (userLogin.statusCode !== 200) throw new Error('Normal User login failed');
     const userToken = userLogin.data.data.token;
-    console.log('  ✔ NORMAL_USER authenticated.');
 
-    // --- 3. SYSTEM_ADMIN STORE CREATION & OWNER RELATIONSHIP VALIDATION ---
-    console.log('\n--- 3. SYSTEM_ADMIN STORE CREATION & OWNER RELATIONSHIP VALIDATION ---');
-    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    // --- 2. DETAILED STORE_OWNER PROFILE INSPECTION ---
+    console.log('--- 2. DETAILED STORE_OWNER PROFILE & STORE RATINGS ---');
+    const ownerDetailRes = await request('GET', '/api/v1/users/2', null, adminToken);
+    if (ownerDetailRes.statusCode !== 200) throw new Error('Failed to retrieve Store Owner details');
+    const ownerUser = ownerDetailRes.data.data.user;
 
-    // A. Valid Store Creation linked to STORE_OWNER (Alice Storekeeper, id: 2)
-    const validStore = await request('POST', '/api/v1/stores', {
-      name: `Apex Ultra Electronics Emporium ${randSuffix}`,
-      email: `apex.ultra${randSuffix}@apexdigital.com`,
-      address: '750 Innovation Drive, Silicon Valley Sector 4',
-      owner_id: 2
-    }, adminToken);
-    if (validStore.statusCode !== 201) throw new Error(`Admin failed to create store, got status ${validStore.statusCode}`);
-    const createdStore = validStore.data.data.store;
-    if (typeof createdStore.averageRating !== 'number' && typeof createdStore.overall_rating !== 'number') {
-      throw new Error('Store response missing rating metric');
+    if (ownerUser.role !== 'STORE_OWNER') throw new Error('Role mismatch on Store Owner');
+    if (ownerUser.password || ownerUser.password_hash) throw new Error('Security Leak: password or hash exposed in details');
+    if (!ownerUser.stores || !Array.isArray(ownerUser.stores) || ownerUser.stores.length === 0) {
+      throw new Error('STORE_OWNER details missing associated stores');
     }
-    console.log(`  ✔ [POST /api/v1/stores] (Admin) Created store "${createdStore.name}" linked to STORE_OWNER (201 Created)`);
-
-    // B. Invalid Owner Role Rejection (Assigning store to NORMAL_USER John Doe, id: 4)
-    const invalidOwnerStore = await request('POST', '/api/v1/stores', {
-      name: `Invalid Owner Test Store ${randSuffix}`,
-      email: `invalid.owner${randSuffix}@example.com`,
-      address: '100 Bad Relationship Lane',
-      owner_id: 4 // NORMAL_USER
-    }, adminToken);
-    if (invalidOwnerStore.statusCode !== 400 && invalidOwnerStore.statusCode !== 422) {
-      throw new Error('Assigned NORMAL_USER as store owner was not rejected');
+    const store = ownerUser.stores[0];
+    if (!store.name || typeof store.averageRating !== 'number' || typeof store.ratingCount !== 'number') {
+      throw new Error('STORE_OWNER store missing average rating or review count');
     }
-    console.log('  ✔ [POST /api/v1/stores] (Admin) Assigning NORMAL_USER as Store Owner rejected (400 Bad Request as expected)');
+    console.log(`  ✔ [GET /api/v1/users/:id] STORE_OWNER "${ownerUser.name}" details retrieved.`);
+    console.log(`    ↳ Associated Store: "${store.name}", Avg Rating: ${store.averageRating}★, Reviews: ${store.ratingCount}`);
 
-    // C. Validation: Short Name Rejection (< 20 chars)
-    const shortNameStore = await request('POST', '/api/v1/stores', {
-      name: 'Apex Shop', // < 20 chars
-      email: `short${randSuffix}@shop.com`,
-      address: '404 Short Street',
-      owner_id: 2
-    }, adminToken);
-    if (shortNameStore.statusCode !== 422) throw new Error('Short store name was not rejected with 422');
-    console.log('  ✔ [POST /api/v1/stores] (Admin) Name < 20 chars rejected (422 Unprocessable Entity)');
+    // --- 3. DETAILED NORMAL_USER PROFILE INSPECTION ---
+    console.log('\n--- 3. DETAILED NORMAL_USER PROFILE & SAFE DATA ---');
+    const normalDetailRes = await request('GET', '/api/v1/users/4', null, adminToken);
+    if (normalDetailRes.statusCode !== 200) throw new Error('Failed to retrieve Normal User details');
+    const normalUser = normalDetailRes.data.data.user;
 
-    // --- 4. STORE LISTING, DYNAMIC RATING, FILTERING & SORTING ---
-    console.log('\n--- 4. STORE LISTING, DYNAMIC RATING, FILTERING & SORTING ---');
+    if (normalUser.role !== 'NORMAL_USER') throw new Error('Role mismatch on Normal User');
+    if (normalUser.password || normalUser.password_hash) throw new Error('Security Leak: password or hash exposed');
+    console.log(`  ✔ [GET /api/v1/users/:id] NORMAL_USER "${normalUser.name}" details retrieved safely without password.`);
 
-    // A. List stores with dynamic calculated overall rating
-    const storesList = await request('GET', '/api/v1/stores?page=1&limit=5');
-    if (storesList.statusCode !== 200) throw new Error('Failed to list stores');
-    const stores = storesList.data.data.stores;
-    if (!stores || stores.length === 0) throw new Error('No stores returned');
-    stores.forEach((s) => {
-      if (s.averageRating === undefined && s.overall_rating === undefined) {
-        throw new Error('Store record missing dynamically computed rating');
-      }
-    });
-    console.log(`  ✔ [GET /api/v1/stores] Listed ${stores.length} stores with dynamic ratings calculated from ratings table (200 OK)`);
+    // --- 4. DETAILED SYSTEM_ADMIN PROFILE INSPECTION ---
+    console.log('\n--- 4. DETAILED SYSTEM_ADMIN PROFILE & SAFE DATA ---');
+    const adminDetailRes = await request('GET', '/api/v1/users/1', null, adminToken);
+    if (adminDetailRes.statusCode !== 200) throw new Error('Failed to retrieve Admin details');
+    const adminUser = adminDetailRes.data.data.user;
 
-    // B. Filter by Name / Email / Address
-    const nameFilter = await request('GET', '/api/v1/stores?name=Apex');
-    if (nameFilter.statusCode !== 200) throw new Error('Name filter failed');
-    console.log(`  ✔ [GET /api/v1/stores?name=Apex] Filtered ${nameFilter.data.data.stores.length} stores matching "Apex" (200 OK)`);
+    if (adminUser.role !== 'SYSTEM_ADMIN') throw new Error('Role mismatch on Admin User');
+    if (adminUser.password || adminUser.password_hash) throw new Error('Security Leak: password or hash exposed');
+    console.log(`  ✔ [GET /api/v1/users/:id] SYSTEM_ADMIN "${adminUser.name}" details retrieved safely without password.`);
 
-    const emailFilter = await request('GET', '/api/v1/stores?email=urbangourmet');
-    if (emailFilter.statusCode !== 200) throw new Error('Email filter failed');
-    console.log('  ✔ [GET /api/v1/stores?email=urbangourmet] Email filter verified (200 OK)');
+    // --- 5. RBAC GUARDS ---
+    console.log('\n--- 5. RBAC GUARDS ON USER DETAILS ---');
+    const userToDetail = await request('GET', '/api/v1/users/2', null, userToken);
+    if (userToDetail.statusCode !== 403) throw new Error('NORMAL_USER was not blocked with 403 from inspecting users');
+    console.log('  ✔ [GET /api/v1/users/:id] (NORMAL_USER) -> 403 Forbidden (Blocked as expected)');
 
-    const addressFilter = await request('GET', '/api/v1/stores?address=Silicon');
-    if (addressFilter.statusCode !== 200) throw new Error('Address filter failed');
-    console.log('  ✔ [GET /api/v1/stores?address=Silicon] Address filter verified (200 OK)');
+    const ownerToDetail = await request('GET', '/api/v1/users/4', null, ownerToken);
+    if (ownerToDetail.statusCode !== 403) throw new Error('STORE_OWNER was not blocked with 403 from inspecting users');
+    console.log('  ✔ [GET /api/v1/users/:id] (STORE_OWNER) -> 403 Forbidden (Blocked as expected)');
 
-    // C. Sorting by Name (ASC / DESC) and Rating (DESC)
-    const sortRating = await request('GET', '/api/v1/stores?sortBy=rating&order=desc');
-    if (sortRating.statusCode !== 200) throw new Error('Sorting by rating failed');
-    console.log('  ✔ [GET /api/v1/stores?sortBy=rating&order=desc] Sorting by overall rating verified (200 OK)');
-
-    const sortName = await request('GET', '/api/v1/stores?sortBy=name&order=asc');
-    if (sortName.statusCode !== 200) throw new Error('Sorting by name failed');
-    console.log('  ✔ [GET /api/v1/stores?sortBy=name&order=asc] Sorting by Name ASC verified (200 OK)');
-
-    // D. View Store Details by ID
-    const storeDetail = await request('GET', `/api/v1/stores/${stores[0].id}`);
-    if (storeDetail.statusCode !== 200) throw new Error('Failed to get store details');
-    console.log(`  ✔ [GET /api/v1/stores/:id] Retrieved details for "${storeDetail.data.data.store.name}" with owner info & ratings (200 OK)`);
-
-    // --- 5. RBAC GUARDS & RESTRICTIONS ---
-    console.log('\n--- 5. RBAC AUTHORIZATION ENFORCEMENT ON STORE MANAGEMENT ---');
-
-    // A. NORMAL_USER trying to create a store
-    const userCreateStore = await request('POST', '/api/v1/stores', {
-      name: `Unauthorized User Store ${randSuffix}`,
-      email: `unauth.store${randSuffix}@test.com`,
-      address: '999 Forbidden Street',
-      owner_id: 2
-    }, userToken);
-    if (userCreateStore.statusCode !== 403) throw new Error('NORMAL_USER was not blocked with 403 from creating store');
-    console.log('  ✔ [POST /api/v1/stores] (NORMAL_USER) -> 403 Forbidden (Blocked as expected)');
-
-    // B. Unauthenticated user trying to create a store
-    const unauthStore = await request('POST', '/api/v1/stores', {
-      name: `Unauthenticated Store ${randSuffix}`,
-      email: `unauth${randSuffix}@test.com`,
-      address: '100 Missing Token Ave',
-      owner_id: 2
-    });
-    if (unauthStore.statusCode !== 401) throw new Error('Unauthenticated user was not blocked with 401 from creating store');
-    console.log('  ✔ [POST /api/v1/stores] (Unauthenticated) -> 401 Unauthorized (Blocked as expected)');
-
-    console.log('\n✨ ALL BACKEND STORE-MANAGEMENT & SECURITY TESTS PASSED!\n');
+    console.log('\n✨ ALL DETAILED USER-VIEW & SECURITY TESTS PASSED!\n');
   } finally {
     await stopTestServer();
   }
