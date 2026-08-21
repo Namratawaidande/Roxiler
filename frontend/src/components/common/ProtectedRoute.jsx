@@ -1,11 +1,10 @@
 import React from 'react';
-import { Navigate, useLocation, Link } from 'react-router-dom';
-import { ShieldAlert, LogIn, ArrowLeft } from 'lucide-react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 /**
  * Protected Route Wrapper Component
- * Enforces JWT authentication and Role-Based Access Control (RBAC) on frontend routes
+ * Enforces JWT authentication and seamlessly navigates users to their role-accessible area
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children - Child components to render if permitted
@@ -26,32 +25,19 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     );
   }
 
-  // 1. Unauthenticated -> Redirect to unified login page
+  // 1. Unauthenticated -> Redirect to login page
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 2. Authenticated, but role is restricted
+  // 2. Authenticated, but accessing a route restricted to a different role -> Directly redirect to user's role-accessible area
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    return (
-      <div style={{ maxWidth: '520px', margin: '3rem auto' }}>
-        <div className="glass-card" style={{ textAlign: 'center', borderTop: '4px solid #ef4444' }}>
-          <ShieldAlert size={48} color="#ef4444" style={{ margin: '0 auto 1rem' }} />
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#f8fafc' }}>Access Restricted</h2>
-          <p style={{ fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Your account role <span className="badge badge-warning">{user?.role}</span> is not authorized to access this page.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-            <Link
-              to={user?.role === 'SYSTEM_ADMIN' ? '/admin' : user?.role === 'STORE_OWNER' ? '/owner' : '/stores'}
-              className="btn btn-secondary btn-sm"
-            >
-              <ArrowLeft size={14} /> Go to My Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    const roleDestination =
+      user?.role === 'SYSTEM_ADMIN' ? '/admin' :
+      user?.role === 'STORE_OWNER' ? '/owner' :
+      '/stores';
+
+    return <Navigate to={roleDestination} replace />;
   }
 
   return children;

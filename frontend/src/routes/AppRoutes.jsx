@@ -31,12 +31,18 @@ const RouteLoadingFallback = () => (
   </div>
 );
 
-// Fallback route handler: If unauthenticated, redirect to /login; if authenticated, show 404
+// Fallback route handler: If unauthenticated, redirect to /login; if authenticated, navigate to role-accessible area
 const CatchAllRoute = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   if (loading) return <RouteLoadingFallback />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <NotFoundPage />;
+
+  const roleDestination =
+    user?.role === 'SYSTEM_ADMIN' ? '/admin' :
+    user?.role === 'STORE_OWNER' ? '/owner' :
+    '/stores';
+
+  return <Navigate to={roleDestination} replace />;
 };
 
 export const AppRoutes = () => {
