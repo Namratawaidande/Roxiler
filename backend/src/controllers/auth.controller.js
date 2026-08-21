@@ -1,6 +1,5 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { ApiResponse } = require('../utils/apiResponse');
-const { HTTP_STATUS } = require('../constants/httpStatus');
 const authService = require('../services/auth.service');
 
 /**
@@ -13,7 +12,7 @@ const register = asyncHandler(async (req, res) => {
 });
 
 /**
- * Login User
+ * Unified Login for all roles (SYSTEM_ADMIN, STORE_OWNER, NORMAL_USER)
  * POST /api/v1/auth/login
  */
 const login = asyncHandler(async (req, res) => {
@@ -22,11 +21,21 @@ const login = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get Current User Profile
+ * Get Current Authenticated User Profile
  * GET /api/v1/auth/me
  */
 const getProfile = asyncHandler(async (req, res) => {
-  return ApiResponse.success(res, { user: req.user }, 'User profile retrieved successfully.');
+  const user = await authService.getMe(req.user.id);
+  return ApiResponse.success(res, { user }, 'Current user profile retrieved successfully.');
+});
+
+/**
+ * Logout Endpoint
+ * POST /api/v1/auth/logout
+ */
+const logout = asyncHandler(async (req, res) => {
+  const result = await authService.logout(req.user);
+  return ApiResponse.success(res, result, 'Logged out successfully.');
 });
 
 /**
@@ -51,6 +60,7 @@ module.exports = {
   register,
   login,
   getProfile,
+  logout,
   updatePassword,
   getRoles
 };

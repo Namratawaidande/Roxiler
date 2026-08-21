@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Store, User, Star, TrendingUp, Users, Building, CheckCircle, BarChart3, Clock, MapPin } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const DashboardPreviewPage = () => {
   const { user, isAuthenticated } = useAuth();
   const [selectedRoleTab, setSelectedRoleTab] = useState(user?.role || 'SYSTEM_ADMIN');
+
+  useEffect(() => {
+    if (user?.role) {
+      setSelectedRoleTab(user.role);
+    }
+  }, [user?.role]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

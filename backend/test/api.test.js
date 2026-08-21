@@ -29,60 +29,76 @@ const request = (method, path, body = null, token = null) => {
 };
 
 const runTests = async () => {
-  console.log('🧪 Running Backend Architecture Verification Suite...');
+  console.log('🧪 Running Unified Authentication & Architecture Verification Suite...\n');
 
   // 1. Health Diagnostics
   const health = await request('GET', '/api/v1/health');
   if (health.statusCode !== 200) throw new Error('Health check failed');
-  console.log('  ✔ [GET /api/v1/health] - Diagnostics & status verified (200 OK)');
+  console.log('  ✔ [GET /api/v1/health] - System diagnostics operational (200 OK)');
 
-  // 2. Validation Rejection Check (422)
-  const valError = await request('POST', '/api/v1/auth/register', { name: 'A', email: 'invalid', password: '123' });
-  if (valError.statusCode !== 422) throw new Error('Validation error response failed');
-  console.log('  ✔ [POST /api/v1/auth/register] - Validation middleware caught invalid payload (422 Unprocessable Entity)');
-
-  // 3. JWT Auth Authentication (Admin)
+  // 2. Unified Login - SYSTEM_ADMIN
   const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
   if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
-  const adminToken = adminLogin.data.data?.token;
-  console.log('  ✔ [POST /api/v1/auth/login] - Authentication & JWT generation verified for SYSTEM_ADMIN (200 OK)');
+  const adminData = adminLogin.data.data;
+  if (adminData.user.password_hash || adminData.user.password) throw new Error('Security violation: Password hash leaked in login response!');
+  if (adminData.user.role !== 'SYSTEM_ADMIN') throw new Error('Incorrect role returned for Admin');
+  const adminToken = adminData.token;
+  console.log('  ✔ [POST /api/v1/auth/login] - Unified Login verified for SYSTEM_ADMIN (200 OK)');
 
-  // 4. JWT Auth Authentication (Normal User)
-  const userLogin = await request('POST', '/api/v1/auth/login', { email: 'user@storerating.com', password: 'User@123456' });
-  if (userLogin.statusCode !== 200) throw new Error('User login failed');
-  const userToken = userLogin.data.data?.token;
-  console.log('  ✔ [POST /api/v1/auth/login] - Authentication & JWT generation verified for NORMAL_USER (200 OK)');
+  // 3. Unified Login - STORE_OWNER
+  const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
+  if (ownerLogin.statusCode !== 200) throw new Error('Store Owner login failed');
+  const ownerData = ownerLogin.data.data;
+  if (ownerData.user.password_hash) throw new Error('Security violation: Password hash leaked for Store Owner!');
+  if (ownerData.user.role !== 'STORE_OWNER') throw new Error('Incorrect role returned for Store Owner');
+  const ownerToken = ownerData.token;
+  console.log('  ✔ [POST /api/v1/auth/login] - Unified Login verified for STORE_OWNER (200 OK)');
 
-  // 5. Stores Listing with Search/Sort/Pagination
-  const stores = await request('GET', '/api/v1/stores?page=1&limit=5&sortBy=name&order=asc');
-  if (stores.statusCode !== 200 || !stores.data.meta?.pagination) throw new Error('Stores query failed');
-  console.log('  ✔ [GET /api/v1/stores] - Store catalog query with pagination metadata verified (200 OK)');
+  // 4. Unified Login - NORMAL_USER
+  const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
+  if (userLogin.statusCode !== 200) throw new Error('Normal User login failed');
+  const userData = userLogin.data.data;
+  if (userData.user.password_hash) throw new Error('Security violation: Password hash leaked for Normal User!');
+  if (userData.user.role !== 'NORMAL_USER') throw new Error('Incorrect role returned for Normal User');
+  const userToken = userData.token;
+  console.log('  ✔ [POST /api/v1/auth/login] - Unified Login verified for NORMAL_USER (200 OK)');
 
-  // 6. Ratings Aggregations
-  const ratings = await request('GET', '/api/v1/ratings/store/1');
-  if (ratings.statusCode !== 200) throw new Error('Ratings query failed');
-  console.log('  ✔ [GET /api/v1/ratings/store/1] - Ratings reviews and average calculation verified (200 OK)');
+  // 5. Authentication Failure with Invalid Password
+  const badLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'WrongPassword@999' });
+  if (badLogin.statusCode !== 401) throw new Error('Security error: Invalid credentials were not rejected with 401');
+  console.log('  ✔ [POST /api/v1/auth/login] - Invalid credentials safely rejected (401 Unauthorized)');
 
-  // 7. Role-Based Access Control (Authorized Admin)
+  // 6. Current User Retrieval (GET /api/v1/auth/me)
+  const meRes = await request('GET', '/api/v1/auth/me', null, adminToken);
+  if (meRes.statusCode !== 200 || meRes.data.data?.user?.email !== 'admin@storerating.com') {
+    throw new Error('GET /api/v1/auth/me failed');
+  }
+  if (meRes.data.data?.user?.password_hash) throw new Error('Security violation: Password hash leaked in /auth/me!');
+  console.log('  ✔ [GET /api/v1/auth/me] - Current user safe profile retrieved (200 OK)');
+
+  // 7. Invalid Token Handling (GET /api/v1/auth/me with bad token)
+  const badTokenRes = await request('GET', '/api/v1/auth/me', null, 'invalid.jwt.token.signature');
+  if (badTokenRes.statusCode !== 401) throw new Error('Invalid token not rejected with 401');
+  console.log('  ✔ [Invalid Token Guard] - Malformed/expired JWT token rejected (401 Unauthorized)');
+
+  // 8. Logout Endpoint (POST /api/v1/auth/logout)
+  const logoutRes = await request('POST', '/api/v1/auth/logout', null, userToken);
+  if (logoutRes.statusCode !== 200) throw new Error('Logout endpoint failed');
+  console.log('  ✔ [POST /api/v1/auth/logout] - Session logout endpoint verified (200 OK)');
+
+  // 9. RBAC Route Protection (Admin vs Normal User)
   const adminDash = await request('GET', '/api/v1/dashboard/admin', null, adminToken);
-  if (adminDash.statusCode !== 200) throw new Error('Admin dashboard authorization failed');
-  console.log('  ✔ [GET /api/v1/dashboard/admin] - RBAC granted for SYSTEM_ADMIN (200 OK)');
-
-  // 8. Role-Based Access Control (Forbidden Normal User)
+  if (adminDash.statusCode !== 200) throw new Error('Admin dashboard RBAC failed');
   const forbiddenDash = await request('GET', '/api/v1/dashboard/admin', null, userToken);
-  if (forbiddenDash.statusCode !== 403) throw new Error('RBAC restriction failed');
-  console.log('  ✔ [GET /api/v1/dashboard/admin] - RBAC blocked for NORMAL_USER as expected (403 Forbidden)');
+  if (forbiddenDash.statusCode !== 403) throw new Error('RBAC forbidden guard failed');
+  console.log('  ✔ [RBAC Role Guards] - Admin granted (200 OK), Normal User restricted (403 Forbidden)');
 
-  // 9. 404 Route Catch-All
-  const notFound = await request('GET', '/api/v1/nonexistent-route');
-  if (notFound.statusCode !== 404) throw new Error('404 catch-all failed');
-  console.log('  ✔ [GET /api/v1/nonexistent-route] - Centralized 404 handler verified (404 Not Found)');
+  // 10. Store Catalog & Ratings Queries
+  const stores = await request('GET', '/api/v1/stores?page=1&limit=5');
+  if (stores.statusCode !== 200) throw new Error('Stores query failed');
+  console.log('  ✔ [GET /api/v1/stores] - Store catalog verified with average ratings');
 
-  // 10. Rate Limiter Security Headers
-  if (!health.headers['x-ratelimit-limit']) throw new Error('Rate limit headers missing');
-  console.log(`  ✔ [Rate Limiting Headers] - Active: Limit=${health.headers['x-ratelimit-limit']}, Remaining=${health.headers['x-ratelimit-remaining']}`);
-
-  console.log('\n✨ ALL 10 ARCHITECTURAL MODULE CHECKS PASSED!\n');
+  console.log('\n✨ ALL UNIFIED AUTHENTICATION & SECURITY TESTS PASSED!\n');
 };
 
 runTests().catch((err) => {

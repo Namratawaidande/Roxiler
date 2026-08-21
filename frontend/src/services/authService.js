@@ -2,14 +2,14 @@ import api from './api';
 
 export const authService = {
   /**
-   * Log in user
+   * Unified login for SYSTEM_ADMIN, STORE_OWNER, and NORMAL_USER
    */
   login: async (credentials) => {
     return await api.post('/auth/login', credentials);
   },
 
   /**
-   * Register new user
+   * Register a new user account
    */
   register: async (userData) => {
     return await api.post('/auth/register', userData);
@@ -20,6 +20,25 @@ export const authService = {
    */
   getMe: async () => {
     return await api.get('/auth/me');
+  },
+
+  /**
+   * Logout session
+   */
+  logout: async () => {
+    try {
+      return await api.post('/auth/logout');
+    } catch {
+      // Allow local logout even if network request fails
+      return { success: true };
+    }
+  },
+
+  /**
+   * Update authenticated user's password
+   */
+  updatePassword: async (passwordData) => {
+    return await api.put('/auth/password', passwordData);
   },
 
   /**

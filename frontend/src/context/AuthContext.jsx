@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('store_rating_token'));
   const [loading, setLoading] = useState(true);
 
-  // Sync token from localStorage and fetch current user profile
+  // Initialize and rehydrate user session using GET /api/v1/auth/me
   useEffect(() => {
     const initAuth = async () => {
       if (token) {
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
             setUser(response.data.user);
           }
         } catch (err) {
-          console.warn('Session check failed or expired:', err.message);
+          console.warn('Session expired or token invalid. Clearing session:', err.message);
           logout();
         }
       }
@@ -34,7 +34,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('store_rating_token', authToken);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Ignore network errors during logout
+    }
     setUser(null);
     setToken(null);
     localStorage.removeItem('store_rating_token');
@@ -43,6 +48,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     token,
+    role: user?.role || null,
     isAuthenticated: Boolean(token && user),
     isAdmin: user?.role === 'SYSTEM_ADMIN',
     isStoreOwner: user?.role === 'STORE_OWNER',

@@ -5,7 +5,7 @@ const { ConflictError, UnauthorizedError, NotFoundError, BadRequestError } = req
 const { ROLES, ROLE_DESCRIPTIONS } = require('../constants/roles');
 
 /**
- * Built-in demo accounts for offline / mock-mode development
+ * Built-in demo accounts for offline / zero-configuration testing
  */
 const DEMO_ACCOUNTS = [
   {
@@ -86,7 +86,7 @@ class AuthService {
       const res = await db.query(
         `INSERT INTO users (name, email, password_hash, address, role)
          VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, email, address, role, created_at`,
+         RETURNING id, name, email, address, role, created_at, updated_at`,
         [cleanName, cleanEmail, hashedPassword, cleanAddress, role]
       );
 
@@ -95,7 +95,7 @@ class AuthService {
       return { user, token };
     }
 
-    // Mock mode response (password_hash never exposed)
+    // Mock mode fallback (password_hash never returned)
     const mockUser = {
       id: Math.floor(Math.random() * 1000) + 10,
       name: cleanName,
@@ -109,13 +109,17 @@ class AuthService {
   }
 
   /**
-   * Authenticate user with credentials
+   * Unified Login for all roles (SYSTEM_ADMIN, STORE_OWNER, NORMAL_USER)
    */
   async login({ email, password }) {
     const cleanEmail = email.toLowerCase().trim();
 
     if (db.getStatus().connected) {
-      const res = await db.query('SELECT id, name, email, password_hash, address, role, created_at FROM users WHERE email = $1', [cleanEmail]);
+      const res = await db.query(
+        'SELECT id, name, email, password_hash, address, role, created_at, updated_at FROM users WHERE email = $1',
+        [cleanEmail]
+      );
+
       if (res.rows.length === 0) {
         throw new UnauthorizedError('Invalid email or password credentials.');
       }
@@ -126,16 +130,17 @@ class AuthService {
         throw new UnauthorizedError('Invalid email or password credentials.');
       }
 
-      // Explicitly sanitize user payload (no password_hash)
+      // Safe user payload - password_hash is strictly omitted
       const userPayload = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
         address: user.address,
+        role: user.role,
         created_at: user.created_at
       };
       const token = generateToken(userPayload);
+
       return { user: userPayload, token };
     }
 
@@ -146,8 +151,9 @@ class AuthService {
         id: demo.id,
         name: demo.name,
         email: demo.email,
+        address: demo.address,
         role: demo.role,
-        address: demo.address
+        created_at: new Date().toISOString()
       };
       const token = generateToken(userPayload);
       return { user: userPayload, token, note: 'Demo mode active.' };
@@ -157,7 +163,34 @@ class AuthService {
   }
 
   /**
-   * Update authenticated user's password
+   * Get Current Authenticated User profile
+   */
+  async getMe(userId) {
+    if (db.getStatus().connected) {
+      const res = await db.query(
+        'SELECT id, name, email, address, role, created_at, updated_at FROM users WHERE id = $1',
+        [userId]
+      );
+      if (res.rows.length === 0) {
+        throw new NotFoundError('User profile not found.');
+      }
+      return res.rows[0];
+    }
+
+    // Mock fallback matching
+    const demo = DEMO_ACCOUNTS.find((u) => u.id === userId) || DEMO_ACCOUNTS[0];
+    return {
+      id: demo.id,
+      name: demo.name,
+      email: demo.email,
+      address: demo.address,
+      role: demo.role,
+      created_at: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Update password for authenticated user
    */
   async updatePassword(userId, { currentPassword, newPassword }) {
     if (currentPassword === newPassword) {
@@ -180,7 +213,14 @@ class AuthService {
       return { message: 'Password updated successfully.' };
     }
 
-    return { message: 'Password updated successfully (Demo mock mode).' };
+    return { message: 'Password updated successfully (Demo mode).' };
+  }
+
+  /**
+   * Logout user (client-side token removal strategy acknowledgment)
+   */
+  async logout(user) {
+    return { message: 'Logged out successfully.' };
   }
 
   /**
