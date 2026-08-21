@@ -150,13 +150,29 @@ export const Navbar = () => {
           {isAuthenticated && (
             <>
               {isAdmin && (
-                <Link
-                  to="/admin"
-                  className={`btn btn-sm ${location.pathname === '/admin' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ color: location.pathname === '/admin' ? '#fff' : '#818cf8', fontWeight: 600 }}
-                >
-                  <Shield size={14} /> Admin Area
-                </Link>
+                <>
+                  <Link
+                    to="/admin"
+                    className={`btn btn-sm ${location.pathname === '/admin' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ color: location.pathname === '/admin' ? '#fff' : '#818cf8', fontWeight: 600 }}
+                  >
+                    <Shield size={14} /> Admin Hub
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    className={`btn btn-sm ${location.pathname === '/admin/users' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ color: location.pathname === '/admin/users' ? '#fff' : '#818cf8', fontWeight: 600 }}
+                  >
+                    <User size={14} /> Users
+                  </Link>
+                  <Link
+                    to="/admin/stores"
+                    className={`btn btn-sm ${location.pathname === '/admin/stores' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ color: location.pathname === '/admin/stores' ? '#fff' : '#818cf8', fontWeight: 600 }}
+                  >
+                    <Store size={14} /> Stores
+                  </Link>
+                </>
               )}
 
               {isStoreOwner && (
