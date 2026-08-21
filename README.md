@@ -1,6 +1,6 @@
-# Store Rating Web Application - Initial Foundation
+# Store Rating Web Application
 
-A robust, scalable full-stack web application foundation for a **Store Rating Platform**, built with modern best practices, clean MVC architecture, separated concerns, and production-style security.
+A robust, scalable full-stack web application for a **Store Rating Platform**, built with React.js, Express.js (3-tier architecture), PostgreSQL, and JWT-based authentication with Role-Based Access Control (RBAC).
 
 ---
 
@@ -8,168 +8,101 @@ A robust, scalable full-stack web application foundation for a **Store Rating Pl
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
-| **Frontend** | React 18 + Vite | Modern reactive frontend with rich glassmorphism UI, client-side routing, and live API state |
-| **Backend** | Node.js + Express.js | Modular RESTful API server with security middlewares, custom validators, and central error handling |
-| **Database** | PostgreSQL | Relational database schema with indexes, foreign keys, triggers, migrations, and connection pooling |
+| **Frontend** | React 18 + Vite | Modern reactive frontend with glassmorphism UI, client-side routing, and real-time backend state |
+| **Backend** | Node.js + Express.js | 3-tier Service-Oriented Architecture (`Routes` $\rightarrow$ `Controllers` $\rightarrow$ `Services` $\rightarrow$ `Database`) |
+| **Database** | PostgreSQL | 3NF normalized schema with composite unique constraints, triggers, indexes, and summary view |
 | **Authentication** | JWT + Bcrypt | Secure token-based authentication with 10-round salted password hashing & RBAC |
 
 ---
 
-## 👥 User Roles & Permissions
+## 👥 User Roles & Permissions Matrix
 
-1. **`SYSTEM_ADMIN`**
-   - Manage all registered users.
-   - Manage and moderate stores.
-   - Access platform analytics (total users, stores, submitted ratings, ratings distribution).
-2. **`STORE_OWNER`**
-   - Maintain store details.
-   - Monitor customer ratings and inspect overall average rating scores.
-   - View recent feedback and reviews.
-3. **`NORMAL_USER`**
-   - Register and authenticate securely.
-   - Browse, search, and sort stores by name, address, and rating.
-   - Submit and update store ratings (1–5 stars) with optional feedback comments.
+| Role | Permissions & Capabilities |
+| :--- | :--- |
+| **`SYSTEM_ADMIN`** | • Full user management (list, inspect, update roles, delete)<br>• Store management and oversight<br>• System-wide statistics and analytical dashboard access |
+| **`STORE_OWNER`** | • Create and manage owned store profiles<br>• Monitor customer ratings and reviews in real-time<br>• View store average rating scores and feedback stream |
+| **`NORMAL_USER`** | • Browse, search, filter, and sort stores by name, address, and rating<br>• Submit 1–5 star ratings and optional review comments<br>• Modify previously submitted ratings anytime (1 rating per store enforced at DB level) |
 
 ---
 
-## 📁 Project Structure
+## 🗄️ PostgreSQL Database Setup & Seeding
 
-```text
-Roxiler/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── db.js              # PostgreSQL connection pool with connection check
-│   │   │   ├── env.js             # Centralized environment variable loader
-│   │   │   └── jwt.js             # JWT configuration & options
-│   │   ├── constants/
-│   │   │   ├── httpStatus.js      # Standard HTTP status constants
-│   │   │   └── roles.js           # SYSTEM_ADMIN, STORE_OWNER, NORMAL_USER constants
-│   │   ├── controllers/
-│   │   │   ├── adminController.js # Admin operations & statistics
-│   │   │   ├── authController.js  # Registration, login, profile, role discovery
-│   │   │   ├── healthController.js# System health & DB diagnostics
-│   │   │   ├── ratingController.js# Ratings submission & store ratings
-│   │   │   └── storeController.js # Store listings and management
-│   │   ├── database/
-│   │   │   ├── migrate.js         # Automated DDL schema migration runner
-│   │   │   ├── schema.sql         # PostgreSQL schema (users, stores, ratings)
-│   │   │   └── seed.js            # Initial demo data & accounts seeder
-│   │   ├── middlewares/
-│   │   │   ├── authMiddleware.js  # JWT Bearer token authentication
-│   │   │   ├── errorMiddleware.js # 404 handler and global exception handler
-│   │   │   ├── roleMiddleware.js  # Role-Based Access Control (RBAC)
-│   │   │   └── validationMiddleware.js # express-validator wrapper
-│   │   ├── routes/
-│   │   │   ├── adminRoutes.js
-│   │   │   ├── authRoutes.js
-│   │   │   ├── healthRoutes.js
-│   │   │   ├── index.js           # Root /api/v1 router
-│   │   │   ├── ratingRoutes.js
-│   │   │   └── storeRoutes.js
-│   │   ├── utils/
-│   │   │   ├── apiResponse.js     # Standardized JSON response envelope
-│   │   │   ├── logger.js          # Timestamped console logging
-│   │   │   ├── password.js        # Bcrypt hash and compare helpers
-│   │   │   └── token.js           # JWT signing and verification
-│   │   ├── app.js                 # Express app config (CORS, Helmet, Morgan)
-│   │   └── server.js              # Server entrypoint & graceful shutdown
-│   ├── .env                       # Backend environment configuration
-│   ├── .env.example               # Backend environment template
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── common/
-│   │   │       ├── Footer.jsx
-│   │   │       ├── Navbar.jsx     # Header with live API connection indicator
-│   │   │       └── StatusBadge.jsx
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx    # Global JWT auth & role management
-│   │   ├── pages/
-│   │   │   ├── DashboardPreviewPage.jsx # Multi-role dashboard previews
-│   │   │   ├── HomePage.jsx       # Interactive foundation dashboard & API explorer
-│   │   │   ├── LoginPage.jsx      # Auth login with 1-click test credentials
-│   │   │   ├── NotFoundPage.jsx   # 404 handling
-│   │   │   └── RegisterPage.jsx   # Registration with instant validation
-│   │   ├── routes/
-│   │   │   └── AppRoutes.jsx      # React Router route registry
-│   │   ├── services/
-│   │   │   ├── api.js             # Axios instance with interceptors
-│   │   │   ├── authService.js
-│   │   │   └── healthService.js
-│   │   ├── styles/
-│   │   │   └── index.css          # Design system & dark glassmorphic styles
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── .env                       # Frontend environment configuration
-│   ├── .env.example               # Frontend environment template
-│   ├── index.html
-│   ├── vite.config.js             # Vite configuration with /api proxy
-│   └── package.json
-│
-├── package.json                   # Root package with concurrent startup scripts
-├── .gitignore
-└── README.md
+### 1. Environment Configuration
+Verify your `backend/.env` configuration:
+```env
+PORT=5000
+NODE_ENV=development
+CLIENT_URL=http://localhost:5173
+
+# PostgreSQL Connection Pool Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=store_rating_db
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_SSL=false
+DB_MAX_CONNECTIONS=20
+DB_IDLE_TIMEOUT_MS=30000
+DB_CONNECTION_TIMEOUT_MS=2000
+
+# JWT Authentication
+JWT_SECRET=super_secret_jwt_key_store_rating_platform_2026
+JWT_EXPIRES_IN=7d
 ```
+
+### 2. Database Management Commands
+
+Run any of these commands from the root directory:
+
+```powershell
+# 1. Complete Initial Database Setup (Migrates schema & seeds realistic data)
+npm run db:setup
+
+# 2. Run / Re-apply Schema Migrations Only
+npm run db:migrate
+
+# 3. Seed / Update Demo Records Safely (Idempotent: ON CONFLICT DO UPDATE)
+npm run db:seed
+
+# 4. Clean Reset (Drops tables, re-migrates, and re-seeds development DB)
+npm run db:reset
+```
+
+---
+
+## 🔑 Default Seeded Test Credentials
+
+All passwords are securely hashed using `bcrypt` (10 salt rounds) and **never exposed in API responses**:
+
+| Role | Name | Email | Password | Associated Stores |
+| :--- | :--- | :--- | :--- | :--- |
+| **SYSTEM_ADMIN** | System Administrator | `admin@storerating.com` | `Admin@123456` | Platform-wide Access |
+| **STORE_OWNER** | Alice Storekeeper | `owner1@storerating.com` | `Owner@123456` | Apex Digital, Apex Mobile |
+| **STORE_OWNER** | Marcus Vance | `owner2@storerating.com` | `Owner@123456` | Urban Gourmet Market |
+| **NORMAL_USER** | John Doe | `john.doe@example.com` | `User@123456` | Customer / Reviewer |
+| **NORMAL_USER** | Sarah Jenkins | `sarah.jenkins@example.com` | `User@123456` | Customer / Reviewer |
+| **NORMAL_USER** | Michael Chang | `michael.chang@example.com` | `User@123456` | Customer / Reviewer |
+| **NORMAL_USER** | Emily Watson | `emily.watson@example.com` | `User@123456` | Customer / Reviewer |
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Install Dependencies
-Run the install command from the root directory to install dependencies for root, backend, and frontend:
-```bash
+### Install all dependencies:
+```powershell
 npm run install:all
 ```
 
-### 2. Start Both Frontend & Backend Concurrently
-From the workspace root:
-```bash
+### Start Frontend & Backend concurrently:
+```powershell
 npm run dev
 ```
 
-- **Frontend Application:** [http://localhost:5173](http://localhost:5173)
-- **Backend API Server:** [http://localhost:5000](http://localhost:5000)
-- **Health Diagnostic Endpoint:** [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health)
+- **Frontend App:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:5000](http://localhost:5000)
+- **Diagnostics:** [http://localhost:5000/api/v1/health](http://localhost:5000/api/v1/health)
 
----
-
-## 🗄️ PostgreSQL Database Setup
-
-1. Make sure your PostgreSQL server is active on `localhost:5432` with a database named `store_rating_db` (or update `backend/.env`).
-2. Run database schema migration:
-   ```bash
-   npm run db:migrate
-   ```
-3. Seed default demo data and role credentials:
-   ```bash
-   npm run db:seed
-   ```
-
-### Default Seeded Test Credentials
-
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| **SYSTEM_ADMIN** | `admin@storerating.com` | `Admin@123456` |
-| **STORE_OWNER** | `owner@storerating.com` | `Owner@123456` |
-| **NORMAL_USER** | `user@storerating.com` | `User@123456` |
-
----
-
-## 🛡️ API Endpoints Summary
-
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | Public | Live system, uptime & database diagnostics |
-| `POST` | `/api/v1/auth/register` | Public | Register account with validation & role assignment |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate user & receive JWT token |
-| `GET` | `/api/v1/auth/me` | Private | Get authenticated user profile |
-| `GET` | `/api/v1/auth/roles` | Public | List supported system roles |
-| `GET` | `/api/v1/stores` | Public | List stores with average ratings |
-| `POST` | `/api/v1/stores` | Admin/Owner | Create new store |
-| `GET` | `/api/v1/ratings/store/:storeId` | Public | Get reviews & average for a store |
-| `POST` | `/api/v1/ratings` | Normal User | Submit / modify store rating (1–5 stars) |
-| `GET` | `/api/v1/admin/stats` | Admin | Get platform analytics & user counts |
-| `GET` | `/api/v1/admin/users` | Admin | List all registered users |
+### Run Backend Integration Verification Tests:
+```powershell
+npm run test:backend
+```

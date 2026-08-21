@@ -5,34 +5,63 @@ const { ConflictError, UnauthorizedError, NotFoundError, BadRequestError } = req
 const { ROLES, ROLE_DESCRIPTIONS } = require('../constants/roles');
 
 /**
- * Built-in demo users for zero-configuration testing when PostgreSQL is in mock/offline mode
+ * Built-in demo accounts for offline / mock-mode development
  */
 const DEMO_ACCOUNTS = [
   {
     id: 1,
     name: 'System Administrator',
     email: 'admin@storerating.com',
-    passwordHash: '$2a$10$tZ98E5Zk9P9Pj0PzGjQGceU3c9r9h9aU5O/Bq6b.N3uW8vJ9u6eW.', // Admin@123456
     rawPassword: 'Admin@123456',
-    address: 'Admin HQ Suite 100',
+    address: 'HQ Administration Suite 100, Tech Plaza',
     role: ROLES.SYSTEM_ADMIN
   },
   {
     id: 2,
     name: 'Alice Storekeeper',
-    email: 'owner@storerating.com',
-    passwordHash: '$2a$10$tZ98E5Zk9P9Pj0PzGjQGceU3c9r9h9aU5O/Bq6b.N3uW8vJ9u6eW.', // Owner@123456
+    email: 'owner1@storerating.com',
     rawPassword: 'Owner@123456',
-    address: '456 Merchant Blvd',
+    address: '456 Merchant Blvd, Suite 2A, Downtown',
     role: ROLES.STORE_OWNER
   },
   {
     id: 3,
-    name: 'John Customer',
-    email: 'user@storerating.com',
-    passwordHash: '$2a$10$tZ98E5Zk9P9Pj0PzGjQGceU3c9r9h9aU5O/Bq6b.N3uW8vJ9u6eW.', // User@123456
+    name: 'Marcus Vance',
+    email: 'owner2@storerating.com',
+    rawPassword: 'Owner@123456',
+    address: '780 Artisan Square, Old Town',
+    role: ROLES.STORE_OWNER
+  },
+  {
+    id: 4,
+    name: 'John Doe',
+    email: 'john.doe@example.com',
     rawPassword: 'User@123456',
-    address: '789 Residential Park',
+    address: '12 Maple Street, Apt 3B, Springfield',
+    role: ROLES.NORMAL_USER
+  },
+  {
+    id: 5,
+    name: 'Sarah Jenkins',
+    email: 'sarah.jenkins@example.com',
+    rawPassword: 'User@123456',
+    address: '88 Oak Ridge Terrace, Westview',
+    role: ROLES.NORMAL_USER
+  },
+  {
+    id: 6,
+    name: 'Michael Chang',
+    email: 'michael.chang@example.com',
+    rawPassword: 'User@123456',
+    address: '504 Pine Avenue, Bay District',
+    role: ROLES.NORMAL_USER
+  },
+  {
+    id: 7,
+    name: 'Emily Watson',
+    email: 'emily.watson@example.com',
+    rawPassword: 'User@123456',
+    address: '312 Elm Boulevard, Uptown',
     role: ROLES.NORMAL_USER
   }
 ];
@@ -66,7 +95,7 @@ class AuthService {
       return { user, token };
     }
 
-    // Mock mode response
+    // Mock mode response (password_hash never exposed)
     const mockUser = {
       id: Math.floor(Math.random() * 1000) + 10,
       name: cleanName,
@@ -86,7 +115,7 @@ class AuthService {
     const cleanEmail = email.toLowerCase().trim();
 
     if (db.getStatus().connected) {
-      const res = await db.query('SELECT * FROM users WHERE email = $1', [cleanEmail]);
+      const res = await db.query('SELECT id, name, email, password_hash, address, role, created_at FROM users WHERE email = $1', [cleanEmail]);
       if (res.rows.length === 0) {
         throw new UnauthorizedError('Invalid email or password credentials.');
       }
@@ -97,6 +126,7 @@ class AuthService {
         throw new UnauthorizedError('Invalid email or password credentials.');
       }
 
+      // Explicitly sanitize user payload (no password_hash)
       const userPayload = {
         id: user.id,
         name: user.name,
@@ -111,7 +141,7 @@ class AuthService {
 
     // Fallback demo matching
     const demo = DEMO_ACCOUNTS.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (demo && (password === demo.rawPassword || (await comparePassword(password, demo.passwordHash)))) {
+    if (demo && (password === demo.rawPassword || (await comparePassword(password, await hashPassword(demo.rawPassword))))) {
       const userPayload = {
         id: demo.id,
         name: demo.name,

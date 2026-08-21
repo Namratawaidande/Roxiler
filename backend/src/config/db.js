@@ -14,15 +14,19 @@ try {
     user: env.DB.USER,
     password: env.DB.PASSWORD,
     ssl: env.DB.SSL ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000
+    max: env.DB.MAX_CONNECTIONS,
+    idleTimeoutMillis: env.DB.IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: env.DB.CONNECTION_TIMEOUT_MS
   });
 
   pool.on('error', (err) => {
-    logger.error('Unexpected error on idle PostgreSQL client:', err.message);
+    logger.error('Unexpected error on idle PostgreSQL client pool:', err.message);
     isConnected = false;
     lastConnectionError = err.message;
+  });
+
+  pool.on('connect', () => {
+    logger.debug('New PostgreSQL client checked out from pool.');
   });
 } catch (err) {
   logger.error('Failed to initialize PostgreSQL pool:', err.message);
@@ -45,12 +49,12 @@ const testConnection = async () => {
     client.release();
     isConnected = true;
     lastConnectionError = null;
-    logger.info(`PostgreSQL Connected successfully to database: "${res.rows[0].database_name}"`);
+    logger.info(`PostgreSQL Connected successfully to database: "${res.rows[0].database_name}" at ${res.rows[0].current_time}`);
     return true;
   };
 
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('Connection timed out after 2000ms')), 2000);
+    setTimeout(() => reject(new Error(`Connection timed out after ${env.DB.CONNECTION_TIMEOUT_MS}ms`)), env.DB.CONNECTION_TIMEOUT_MS);
   });
 
   try {
@@ -58,13 +62,13 @@ const testConnection = async () => {
   } catch (err) {
     isConnected = false;
     lastConnectionError = err.message;
-    logger.warn(`PostgreSQL connection check: ${err.message}. Ready when database starts.`);
+    logger.warn(`PostgreSQL connection check: ${err.message}. Backend ready in mock mode until database service starts.`);
     return false;
   }
 };
 
 /**
- * Execute a SQL query using the connection pool
+ * Execute a SQL query with performance timing and error handling
  */
 const query = async (text, params) => {
   if (!pool) {
@@ -74,11 +78,50 @@ const query = async (text, params) => {
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
-    logger.debug('Executed query', { text: text.substring(0, 100), duration: `${duration}ms`, rows: res.rowCount });
+    logger.debug('Executed query', { text: text.substring(0, 120), duration: `${duration}ms`, rowCount: res.rowCount });
     return res;
   } catch (error) {
-    logger.error('Database query error:', { query: text.substring(0, 100), error: error.message });
+    logger.error('Database query execution error:', { query: text.substring(0, 120), error: error.message });
     throw error;
+  }
+};
+
+/**
+ * Checkout a client from the pool for manual transaction management
+ */
+const getClient = async () => {
+  if (!pool) {
+    throw new Error('Database connection pool is not available.');
+  }
+  return await pool.connect();
+};
+
+/**
+ * Helper to run a callback inside a PostgreSQL atomic transaction
+ *
+ * @param {Function} callback - Async function receiving client
+ * @returns {Promise<any>} Result of transaction callback
+ *
+ * @example
+ * const result = await db.transaction(async (client) => {
+ *   await client.query('INSERT INTO ...');
+ *   await client.query('UPDATE ...');
+ *   return { success: true };
+ * });
+ */
+const transaction = async (callback) => {
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('Transaction rolled back due to error:', err.message);
+    throw err;
+  } finally {
+    client.release();
   }
 };
 
@@ -92,12 +135,15 @@ const getStatus = () => ({
   port: env.DB.PORT,
   database: env.DB.NAME,
   user: env.DB.USER,
+  maxConnections: env.DB.MAX_CONNECTIONS,
   lastError: lastConnectionError
 });
 
 module.exports = {
   pool,
   query,
+  getClient,
+  transaction,
   testConnection,
   getStatus
 };
