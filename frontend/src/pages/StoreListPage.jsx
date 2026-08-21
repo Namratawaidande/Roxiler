@@ -145,9 +145,6 @@ export const StoreListPage = () => {
             </span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Explore & Rate Stores</h1>
-          <p style={{ fontSize: '0.95rem' }}>
-            Discover trusted merchant stores, check community reviews, and submit or modify your ratings.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>

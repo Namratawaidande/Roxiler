@@ -71,9 +71,6 @@ export const AdminDashboardPage = () => {
             <span className="badge badge-success">Admin: {user?.name}</span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>System Administrator Dashboard</h1>
-          <p style={{ fontSize: '0.95rem' }}>
-            Real-time platform governance, user distribution metrics, and store rating analytics.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem' }}>

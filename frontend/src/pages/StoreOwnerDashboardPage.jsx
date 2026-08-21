@@ -220,9 +220,6 @@ export const StoreOwnerDashboardPage = () => {
             <span className="badge badge-success">Merchant: {user?.name || user?.email}</span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Merchant Performance Dashboard</h1>
-          <p style={{ fontSize: '0.95rem' }}>
-            Real-time PostgreSQL analytics, store rating performance, and customer review insights.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>

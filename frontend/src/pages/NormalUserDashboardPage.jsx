@@ -175,9 +175,6 @@ export const NormalUserDashboardPage = () => {
             <span className="badge badge-primary">Account: {user?.name || user?.email}</span>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Customer Ratings & Store Explorer</h1>
-          <p style={{ fontSize: '0.95rem' }}>
-            Browse registered stores, inspect verified community ratings, and submit or modify your personal feedback.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
