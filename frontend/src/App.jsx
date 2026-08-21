@@ -3,6 +3,7 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/common/Navbar';
 import { Footer } from './components/common/Footer';
+import { BackgroundVideo } from './components/common/BackgroundVideo';
 import { AppRoutes } from './routes/AppRoutes';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -11,6 +12,7 @@ export const App = () => {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
+          <BackgroundVideo />
           <div className="app-container">
             <Navbar />
             <main className="main-content">
