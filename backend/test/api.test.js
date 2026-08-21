@@ -54,138 +54,117 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runStoreSearchSortingTests = async () => {
+const runRatingSubmissionTests = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 TEST RUNNER: NORMAL_USER Store Search, Sorting & Pagination Suite`);
+  console.log(`🧪 TEST RUNNER: NORMAL_USER Rating Submission & Business Logic Suite`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
   try {
-    // --- 1. AUTHENTICATION ---
-    console.log('--- 1. NORMAL_USER AUTHENTICATION ---');
+    // --- 1. AUTHENTICATING TEST ROLES ---
+    console.log('--- 1. AUTHENTICATION OF TEST ACCOUNTS ---');
     const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    if (userLogin.statusCode !== 200) throw new Error('Normal User login failed');
+    if (userLogin.statusCode !== 200) throw new Error('Normal user login failed');
     const userToken = userLogin.data.data.token;
-    console.log('  ✔ Authenticated as NORMAL_USER.');
+    const userId = userLogin.data.data.user.id;
 
-    // --- 2. CASE-INSENSITIVE & PARTIAL TEXT SEARCH ---
-    console.log('\n--- 2. CASE-INSENSITIVE & PARTIAL TEXT SEARCH ---');
+    const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
+    if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
+    const adminToken = adminLogin.data.data.token;
 
-    // A. Lowercase Partial Name Search
-    const lowerNameRes = await request('GET', '/api/v1/stores?name=apex', null, userToken);
-    if (lowerNameRes.statusCode !== 200) throw new Error('Lowercase name search failed');
-    const lowerStores = lowerNameRes.data.data.stores;
-    if (lowerStores.length === 0) throw new Error('Expected matches for "apex"');
-    lowerStores.forEach(s => {
-      if (!s.name.toLowerCase().includes('apex')) throw new Error('Non-matching store in name search');
-    });
-    console.log(`  ✔ [GET /api/v1/stores?name=apex] Lowercase partial search matched ${lowerStores.length} stores.`);
+    const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
+    if (ownerLogin.statusCode !== 200) throw new Error('Store owner login failed');
+    const ownerToken = ownerLogin.data.data.token;
+    console.log('  ✔ Authenticated NORMAL_USER, SYSTEM_ADMIN, and STORE_OWNER.');
 
-    // B. Uppercase Name Search (Case-Insensitive Verification)
-    const upperNameRes = await request('GET', '/api/v1/stores?name=APEX', null, userToken);
-    if (upperNameRes.statusCode !== 200) throw new Error('Uppercase name search failed');
-    if (upperNameRes.data.data.stores.length !== lowerStores.length) {
-      throw new Error('Case-insensitivity violated in store name search');
+    // --- 2. VALID RATING SUBMISSION ---
+    console.log('\n--- 2. VALID RATING SUBMISSION (1 TO 5 STARS) ---');
+    const submitRes = await request('POST', '/api/v1/ratings', {
+      storeId: 2, // John has not rated Store 2 yet
+      rating: 4,
+      comment: 'Excellent fresh produce and prompt customer service!'
+    }, userToken);
+
+    if (submitRes.statusCode !== 201) {
+      throw new Error(`Expected 201 Created, got ${submitRes.statusCode}: ${JSON.stringify(submitRes.data)}`);
     }
-    console.log('  ✔ [GET /api/v1/stores?name=APEX] Case-insensitivity verified.');
-
-    // C. Partial Address Search
-    const addressRes = await request('GET', '/api/v1/stores?address=silicon', null, userToken);
-    if (addressRes.statusCode !== 200) throw new Error('Address search failed');
-    const addressStores = addressRes.data.data.stores;
-    if (addressStores.length === 0) throw new Error('Expected matches for "silicon"');
-    addressStores.forEach(s => {
-      if (!s.address.toLowerCase().includes('silicon')) throw new Error('Non-matching store in address search');
-    });
-    console.log(`  ✔ [GET /api/v1/stores?address=silicon] Partial address search matched ${addressStores.length} stores.`);
-
-    // D. Combined Multi-Condition Search (Name + Address)
-    const combinedRes = await request('GET', '/api/v1/stores?name=Apex&address=Bay', null, userToken);
-    if (combinedRes.statusCode !== 200) throw new Error('Combined search failed');
-    const combinedStores = combinedRes.data.data.stores;
-    combinedStores.forEach(s => {
-      if (!s.name.toLowerCase().includes('apex') || !s.address.toLowerCase().includes('bay')) {
-        throw new Error('Combined search filter violated');
-      }
-    });
-    console.log(`  ✔ [GET /api/v1/stores?name=Apex&address=Bay] Combined search matched ${combinedStores.length} store(s).`);
-
-    // --- 3. ALLOWLISTED SORTING ON STORE NAME, ADDRESS & OVERALL RATING ---
-    console.log('\n--- 3. ALLOWLISTED SORTING (NAME, ADDRESS, RATING) ---');
-
-    // A. Sorting by Overall Rating DESC
-    const sortRatingDesc = await request('GET', '/api/v1/stores?sortBy=rating&order=desc', null, userToken);
-    if (sortRatingDesc.statusCode !== 200) throw new Error('Sort by rating DESC failed');
-    const ratingDescStores = sortRatingDesc.data.data.stores;
-    for (let i = 0; i < ratingDescStores.length - 1; i++) {
-      if (ratingDescStores[i].averageRating < ratingDescStores[i + 1].averageRating) {
-        throw new Error('Rating DESC order violated');
-      }
+    const createdRating = submitRes.data.data.rating;
+    if (createdRating.rating_value !== 4 || createdRating.user_id !== userId) {
+      throw new Error('Rating data mismatch or invalid user ownership');
     }
-    console.log('  ✔ [GET /api/v1/stores?sortBy=rating&order=desc] Sorted by Overall Rating DESC verified.');
+    console.log(`  ✔ [POST /api/v1/ratings] 4-Star Rating submitted for Store #2 by User #${userId} (201 Created).`);
 
-    // B. Sorting by Overall Rating ASC
-    const sortRatingAsc = await request('GET', '/api/v1/stores?sortBy=rating&order=asc', null, userToken);
-    if (sortRatingAsc.statusCode !== 200) throw new Error('Sort by rating ASC failed');
-    const ratingAscStores = sortRatingAsc.data.data.stores;
-    for (let i = 0; i < ratingAscStores.length - 1; i++) {
-      if (ratingAscStores[i].averageRating > ratingAscStores[i + 1].averageRating) {
-        throw new Error('Rating ASC order violated');
-      }
+    // --- 3. DUPLICATE RATING PREVENTION (ONE-USER-ONE-RATING-PER-STORE) ---
+    console.log('\n--- 3. DUPLICATE RATING PREVENTION ---');
+    const duplicateRes = await request('POST', '/api/v1/ratings', {
+      storeId: 2,
+      rating: 5,
+      comment: 'Trying to rate again'
+    }, userToken);
+
+    if (duplicateRes.statusCode !== 409) {
+      throw new Error(`Expected 409 Conflict for duplicate rating, got ${duplicateRes.statusCode}`);
     }
-    console.log('  ✔ [GET /api/v1/stores?sortBy=rating&order=asc] Sorted by Overall Rating ASC verified.');
+    console.log('  ✔ [POST /api/v1/ratings] Duplicate rating rejected (409 Conflict as expected).');
 
-    // C. Sorting by Store Name ASC & DESC
-    const sortNameAsc = await request('GET', '/api/v1/stores?sortBy=name&order=asc', null, userToken);
-    if (sortNameAsc.statusCode !== 200) throw new Error('Sort by name ASC failed');
-    const sortNameDesc = await request('GET', '/api/v1/stores?sortBy=name&order=desc', null, userToken);
-    if (sortNameDesc.statusCode !== 200) throw new Error('Sort by name DESC failed');
-    console.log('  ✔ [GET /api/v1/stores?sortBy=name&order=asc|desc] Sorting by Store Name ASC & DESC verified.');
+    // --- 4. RATING RANGE & PAYLOAD VALIDATION ---
+    console.log('\n--- 4. INPUT & RATING RANGE VALIDATION ---');
+    const outOfRangeHigh = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 6 }, userToken);
+    if (outOfRangeHigh.statusCode !== 422) throw new Error('Rating 6 was not rejected with 422');
+    console.log('  ✔ Rating > 5 rejected (422 Unprocessable Entity).');
 
-    // D. Sorting by Address ASC & DESC
-    const sortAddrAsc = await request('GET', '/api/v1/stores?sortBy=address&order=asc', null, userToken);
-    if (sortAddrAsc.statusCode !== 200) throw new Error('Sort by address ASC failed');
-    const sortAddrDesc = await request('GET', '/api/v1/stores?sortBy=address&order=desc', null, userToken);
-    if (sortAddrDesc.statusCode !== 200) throw new Error('Sort by address DESC failed');
-    console.log('  ✔ [GET /api/v1/stores?sortBy=address&order=asc|desc] Sorting by Store Address ASC & DESC verified.');
+    const outOfRangeLow = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 0 }, userToken);
+    if (outOfRangeLow.statusCode !== 422) throw new Error('Rating 0 was not rejected with 422');
+    console.log('  ✔ Rating < 1 rejected (422 Unprocessable Entity).');
 
-    // --- 4. PAGINATION METADATA STRUCTURE VALIDATION ---
-    console.log('\n--- 4. PAGINATION METADATA STRUCTURE ---');
-    const pagedRes = await request('GET', '/api/v1/stores?page=1&limit=2', null, userToken);
-    if (pagedRes.statusCode !== 200) throw new Error('Pagination request failed');
-    const meta = pagedRes.data.meta;
-    const pagination = meta?.pagination || meta;
+    const nonIntRating = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 4.5 }, userToken);
+    if (nonIntRating.statusCode !== 422) throw new Error('Non-integer rating 4.5 was not rejected with 422');
+    console.log('  ✔ Non-integer rating rejected (422 Unprocessable Entity).');
 
-    if (typeof pagination.page !== 'number' && typeof pagination.currentPage !== 'number') {
-      throw new Error('Pagination metadata missing page number');
+    // --- 5. NON-EXISTENT STORE CHECK ---
+    console.log('\n--- 5. STORE EXISTENCE VERIFICATION ---');
+    const nonExistentStore = await request('POST', '/api/v1/ratings', { storeId: 99999, rating: 5 }, userToken);
+    if (nonExistentStore.statusCode !== 404) throw new Error('Rating for non-existent store was not rejected with 404');
+    console.log('  ✔ Rating for non-existent store rejected (404 Not Found).');
+
+    // --- 6. RBAC GUARDS (ONLY NORMAL_USER CAN SUBMIT RATINGS) ---
+    console.log('\n--- 6. ROLE-BASED ACCESS GUARDS ---');
+    const adminSubmit = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 5 }, adminToken);
+    if (adminSubmit.statusCode !== 403) throw new Error('SYSTEM_ADMIN was not blocked with 403 from submitting rating');
+    console.log('  ✔ [POST /api/v1/ratings] (SYSTEM_ADMIN) -> 403 Forbidden (Blocked).');
+
+    const ownerSubmit = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 5 }, ownerToken);
+    if (ownerSubmit.statusCode !== 403) throw new Error('STORE_OWNER was not blocked with 403 from submitting rating');
+    console.log('  ✔ [POST /api/v1/ratings] (STORE_OWNER) -> 403 Forbidden (Blocked).');
+
+    const unauthSubmit = await request('POST', '/api/v1/ratings', { storeId: 3, rating: 5 });
+    if (unauthSubmit.statusCode !== 401) throw new Error('Unauthenticated submission was not rejected with 401');
+    console.log('  ✔ [POST /api/v1/ratings] (Unauthenticated) -> 401 Unauthorized (Blocked).');
+
+    // --- 7. FORGED USER ID PROTECTION ---
+    console.log('\n--- 7. TOKEN-DERIVED OWNERSHIP SECURITY ---');
+    const forgedUserSubmit = await request('POST', '/api/v1/ratings', {
+      storeId: 3,
+      rating: 5,
+      userId: 1, // Attempting to forge rating on behalf of Admin
+      user_id: 1
+    }, userToken);
+    if (forgedUserSubmit.statusCode !== 201) throw new Error('Valid submission failed');
+    if (forgedUserSubmit.data.data.rating.user_id !== userId) {
+      throw new Error('Security Breach: Forged userId was accepted in rating submission');
     }
-    if (typeof pagination.pageSize !== 'number' && typeof pagination.itemsPerPage !== 'number') {
-      throw new Error('Pagination metadata missing pageSize');
-    }
-    if (typeof pagination.totalItems !== 'number') {
-      throw new Error('Pagination metadata missing totalItems');
-    }
-    if (typeof pagination.totalPages !== 'number') {
-      throw new Error('Pagination metadata missing totalPages');
-    }
-
-    console.log(`  ✔ [GET /api/v1/stores?page=1&limit=2] Validated Pagination Payload:`, {
-      page: pagination.page || pagination.currentPage,
-      pageSize: pagination.pageSize || pagination.itemsPerPage,
-      totalItems: pagination.totalItems,
-      totalPages: pagination.totalPages
-    });
+    console.log(`  ✔ Forged userId payload ignored; ownership strictly assigned to authenticated user #${userId}.`);
 
     console.log('\n======================================================================');
-    console.log('✨ ALL NORMAL_USER SEARCH, SORTING & PAGINATION TESTS PASSED (100% GREEN)');
+    console.log('✨ ALL NORMAL_USER RATING SUBMISSION TESTS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runStoreSearchSortingTests()
+runRatingSubmissionTests()
   .then(() => {
     process.exit(0);
   })
