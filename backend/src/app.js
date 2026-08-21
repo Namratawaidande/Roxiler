@@ -57,9 +57,9 @@ if (env.isDevelopment) {
 // 4. Rate Limiting Middleware
 app.use(apiLimiter);
 
-// 5. Body Parsing Middlewares
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 5. Body Parsing Middlewares (Strict 100kb limit prevents payload size exhaustion)
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // 6. Base API Index Endpoint
 app.get('/', (req, res) => {

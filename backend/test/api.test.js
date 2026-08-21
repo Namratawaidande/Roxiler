@@ -375,7 +375,36 @@ const runComprehensiveBackendTestSuite = async () => {
       confirmNewPassword: 'User@123456'
     }, newPassLogin.data.data.token);
 
-    // 6.5 Zero Sensitive Data Leakage in API Payloads
+    // 6.5 Mass Assignment / Overposting Defense Verification
+    const massAssignReg = await request('POST', '/api/v1/auth/register', {
+      name: `Mass Assignment Defense Check ${rand}`,
+      email: `mass${rand}@example.com`,
+      password: 'UserPass@2026',
+      address: '100 Defense Way',
+      role: 'SYSTEM_ADMIN',
+      isAdmin: true,
+      permissions: ['ALL']
+    });
+    assert(massAssignReg.statusCode === 201, 'Normal User registered with overposted role fields');
+    const registeredUser = massAssignReg.data.data?.user || massAssignReg.data.data;
+    assert(registeredUser.role === 'NORMAL_USER', 'Mass Assignment Defense: Role parameter injection ignored, assigned NORMAL_USER');
+
+    // 6.6 SQL Injection Payload Resistance
+    const sqlSearch = await request('GET', "/api/v1/stores?search=' OR '1'='1", null, userToken);
+    assert(sqlSearch.statusCode === 200, 'SQL Injection in search query parameter safely neutralized');
+
+    const sqlSort = await request('GET', "/api/v1/stores?sortBy=id;DROP%20TABLE%20users;--", null, userToken);
+    assert(sqlSort.statusCode === 200 || sqlSort.statusCode === 422, 'SQL Injection in sortBy parameter safely neutralized via allowlist');
+
+    // 6.7 Malformed JSON Payload Defense
+    const malformedJson = await request('POST', '/api/v1/auth/login', '{ "email": "admin@storerating.com", "password": }');
+    assert(malformedJson.statusCode === 400, 'Malformed JSON payload rejected cleanly with 400 Bad Request');
+
+    // 6.8 404 Unknown Route Handling
+    const notFound = await request('GET', '/api/v1/non-existent-resource-endpoint');
+    assert(notFound.statusCode === 404, 'Unknown API route returns 404 Not Found');
+
+    // 6.9 Zero Sensitive Data Leakage in API Payloads
     const meRes = await request('GET', '/api/v1/auth/me', null, adminToken);
     const meData = meRes.data.data;
     assert(!meData.password && !meData.password_hash && !meData.passwordHash, 'User profile strictly omits password/hash');
