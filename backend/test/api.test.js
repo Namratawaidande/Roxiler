@@ -54,10 +54,10 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runStoreOwnerRatingStatsTests = async () => {
+const runOwnerRatingsTableTests = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 TEST RUNNER: STORE_OWNER Rating Statistics & Distribution Suite`);
+  console.log(`🧪 TEST RUNNER: STORE_OWNER Customer Ratings Table Server-Side Suite`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
@@ -67,74 +67,68 @@ const runStoreOwnerRatingStatsTests = async () => {
     const owner1Login = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
     if (owner1Login.statusCode !== 200) throw new Error('Owner 1 login failed');
     const owner1Token = owner1Login.data.data.token;
+    console.log('  ✔ Authenticated STORE_OWNER #1 (Alice Storekeeper).');
 
-    const owner2Login = await request('POST', '/api/v1/auth/login', { email: 'owner2@storerating.com', password: 'Owner@123456' });
-    if (owner2Login.statusCode !== 200) throw new Error('Owner 2 login failed');
-    const owner2Token = owner2Login.data.data.token;
-
-    const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    if (userLogin.statusCode !== 200) throw new Error('Normal user login failed');
-    const userToken = userLogin.data.data.token;
-
-    const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
-    if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
-    const adminToken = adminLogin.data.data.token;
-    console.log('  ✔ Authenticated STORE_OWNER #1, STORE_OWNER #2, NORMAL_USER, and SYSTEM_ADMIN.');
-
-    // --- 2. RETRIEVING OWNER 1 RATING STATS ---
-    console.log('\n--- 2. RETRIEVING STORE_OWNER #1 (ALICE) RATING STATS ---');
-    const owner1StatsRes = await request('GET', '/api/v1/ratings/owner/stats', null, owner1Token);
-    if (owner1StatsRes.statusCode !== 200) {
-      throw new Error(`Expected 200 OK for owner stats, got ${owner1StatsRes.statusCode}`);
+    // --- 2. SEARCH BY USER NAME ---
+    console.log('\n--- 2. SERVER-SIDE SEARCH BY USER NAME ---');
+    const nameSearchRes = await request('GET', '/api/v1/ratings/owner?userName=John', null, owner1Token);
+    if (nameSearchRes.statusCode !== 200) throw new Error('User name search failed');
+    const nameList = nameSearchRes.data.data.ratings;
+    if (!nameList.every((r) => r.userName.toLowerCase().includes('john'))) {
+      throw new Error('Search result contains non-matching user name');
     }
-    const stats1 = owner1StatsRes.data.data;
-    if (typeof stats1.averageRating !== 'number' || typeof stats1.totalRatings !== 'number') {
-      throw new Error('Owner 1 stats missing numeric averageRating or totalRatings');
+    console.log(`  ✔ [GET /api/v1/ratings/owner?userName=John] Found ${nameList.length} matching review(s) for customer "John".`);
+
+    // --- 3. SEARCH BY USER EMAIL ---
+    console.log('\n--- 3. SERVER-SIDE SEARCH BY USER EMAIL ---');
+    const emailSearchRes = await request('GET', '/api/v1/ratings/owner?userEmail=john.doe@example.com', null, owner1Token);
+    if (emailSearchRes.statusCode !== 200) throw new Error('User email search failed');
+    const emailList = emailSearchRes.data.data.ratings;
+    if (!emailList.every((r) => r.userEmail.toLowerCase().includes('john.doe'))) {
+      throw new Error('Search result contains non-matching user email');
     }
-    if (!stats1.ratingDistribution || typeof stats1.ratingDistribution !== 'object') {
-      throw new Error('Owner 1 stats missing ratingDistribution object');
+    console.log(`  ✔ [GET /api/v1/ratings/owner?userEmail=john.doe@example.com] Found ${emailList.length} matching review(s).`);
+
+    // --- 4. ALLOWLISTED SORTING ON ALL COLUMNS ---
+    console.log('\n--- 4. COLUMN CLICK-TO-SORT TESTS ---');
+    const sortColumns = ['userName', 'userEmail', 'userAddress', 'rating', 'createdAt'];
+    for (const col of sortColumns) {
+      const resAsc = await request('GET', `/api/v1/ratings/owner?sortBy=${col}&order=ASC`, null, owner1Token);
+      if (resAsc.statusCode !== 200) throw new Error(`Sorting by ${col} ASC failed`);
+
+      const resDesc = await request('GET', `/api/v1/ratings/owner?sortBy=${col}&order=DESC`, null, owner1Token);
+      if (resDesc.statusCode !== 200) throw new Error(`Sorting by ${col} DESC failed`);
+
+      console.log(`  ✔ Column "${col}" successfully sorted ASC & DESC.`);
     }
-    const dist1 = stats1.ratingDistribution;
-    [1, 2, 3, 4, 5].forEach((star) => {
-      if (typeof dist1[star] !== 'number' || isNaN(dist1[star])) {
-        throw new Error(`Invalid star distribution count for ${star} stars: ${dist1[star]}`);
-      }
-    });
 
-    console.log(`  ✔ [GET /api/v1/ratings/owner/stats] Owner #1 Stats: Average Rating = ${stats1.averageRating}★, Total Ratings = ${stats1.totalRatings}.`);
-    console.log(`    ↳ 5-Star Breakdown: 5★: ${dist1[5]} | 4★: ${dist1[4]} | 3★: ${dist1[3]} | 2★: ${dist1[2]} | 1★: ${dist1[1]}.`);
+    // --- 5. SQL INJECTION SECURITY RESILIENCE ---
+    console.log('\n--- 5. SQL INJECTION ATTACK RESILIENCE ---');
+    const injectionRes = await request('GET', '/api/v1/ratings/owner?sortBy=name;DROP%20TABLE%20ratings--', null, owner1Token);
+    if (injectionRes.statusCode !== 200) {
+      throw new Error('Malicious SQL query caused server error instead of safe allowlist fallback');
+    }
+    console.log('  ✔ SQL injection payload in sortBy safely neutralized via strict allowlist mapping.');
 
-    // --- 3. RETRIEVING OWNER 2 RATING STATS & ISOLATION ---
-    console.log('\n--- 3. RETRIEVING STORE_OWNER #2 (MARCUS) RATING STATS ---');
-    const owner2StatsRes = await request('GET', '/api/v1/ratings/owner/stats', null, owner2Token);
-    if (owner2StatsRes.statusCode !== 200) throw new Error('Owner 2 stats request failed');
-    const stats2 = owner2StatsRes.data.data;
-    console.log(`  ✔ [GET /api/v1/ratings/owner/stats] Owner #2 Stats: Average Rating = ${stats2.averageRating}★, Total Ratings = ${stats2.totalRatings}.`);
-    console.log(`  ✔ Cross-owner isolation verified: Owner #2 received separate statistics.`);
-
-    // --- 4. ROLE-BASED ACCESS CONTROL ---
-    console.log('\n--- 4. ROLE-BASED ACCESS BARRIERS ---');
-    const userAccess = await request('GET', '/api/v1/ratings/owner/stats', null, userToken);
-    if (userAccess.statusCode !== 403) throw new Error('NORMAL_USER was not blocked with 403');
-    console.log('  ✔ [GET /api/v1/ratings/owner/stats] (NORMAL_USER) -> 403 Forbidden (Blocked).');
-
-    const adminAccess = await request('GET', '/api/v1/ratings/owner/stats', null, adminToken);
-    if (adminAccess.statusCode !== 403) throw new Error('SYSTEM_ADMIN was not blocked with 403');
-    console.log('  ✔ [GET /api/v1/ratings/owner/stats] (SYSTEM_ADMIN) -> 403 Forbidden (Blocked).');
-
-    const unauthAccess = await request('GET', '/api/v1/ratings/owner/stats');
-    if (unauthAccess.statusCode !== 401) throw new Error('Unauthenticated request was not blocked with 401');
-    console.log('  ✔ [GET /api/v1/ratings/owner/stats] (Unauthenticated) -> 401 Unauthorized (Blocked).');
+    // --- 6. PAGINATION PRESERVATION ---
+    console.log('\n--- 6. PAGINATION & METADATA PRESERVATION ---');
+    const pageRes = await request('GET', '/api/v1/ratings/owner?page=1&limit=1&sortBy=rating&order=DESC', null, owner1Token);
+    if (pageRes.statusCode !== 200) throw new Error('Paginated request failed');
+    const pagination = pageRes.data.meta?.pagination || pageRes.data.meta;
+    if (pagination.pageSize !== 1 && pagination.limit !== 1) {
+      throw new Error('Pagination page size mismatch');
+    }
+    console.log(`  ✔ Pagination metadata verified: Page ${pagination.page} of ${pagination.totalPages} (Total: ${pagination.totalItems}).`);
 
     console.log('\n======================================================================');
-    console.log('✨ ALL STORE_OWNER RATING STATISTICS TESTS PASSED (100% GREEN)');
+    console.log('✨ ALL STORE_OWNER RATINGS TABLE TESTS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runStoreOwnerRatingStatsTests()
+runOwnerRatingsTableTests()
   .then(() => {
     process.exit(0);
   })

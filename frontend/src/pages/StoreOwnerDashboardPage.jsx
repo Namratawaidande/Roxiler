@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -45,15 +48,23 @@ export const StoreOwnerDashboardPage = () => {
   const [ratingsMeta, setRatingsMeta] = useState({ page: 1, totalPages: 1, totalItems: 0, pageSize: 10 });
   const [ratingsLoading, setRatingsLoading] = useState(true);
 
-  // Table Filter & Sort State
-  const [searchTerm, setSearchTerm] = useState('');
+  // Filters State
+  const [filters, setFilters] = useState({
+    search: '',
+    userName: '',
+    userEmail: ''
+  });
   const [starFilter, setStarFilter] = useState('ALL');
+
+  // Sorting & Pagination State
   const [sortBy, setSortBy] = useState('createdAt');
   const [order, setOrder] = useState('DESC');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const debouncedUserName = useDebounce(filters.userName, 300);
+  const debouncedUserEmail = useDebounce(filters.userEmail, 300);
 
   // 1. Fetch Dashboard Metrics & Store Details from Live Express Endpoints
   const fetchDashboardMetrics = async () => {
@@ -61,7 +72,6 @@ export const StoreOwnerDashboardPage = () => {
     setError(null);
 
     try {
-      // Parallel requests to /dashboard/owner and /ratings/owner/stats
       const [dashRes, statsRes] = await Promise.all([
         api.get('/dashboard/owner').catch(() => null),
         api.get('/ratings/owner/stats').catch(() => null)
@@ -84,7 +94,7 @@ export const StoreOwnerDashboardPage = () => {
         ratingDistribution
       });
     } catch (err) {
-      setError(err.message || 'Failed to load merchant dashboard metrics. Please check your connection.');
+      setError(err.message || 'Failed to load merchant dashboard metrics.');
     } finally {
       setDashLoading(false);
     }
@@ -102,22 +112,20 @@ export const StoreOwnerDashboardPage = () => {
         order
       };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+      if (debouncedUserName.trim()) params.userName = debouncedUserName.trim();
+      if (debouncedUserEmail.trim()) params.userEmail = debouncedUserEmail.trim();
+      if (starFilter !== 'ALL') params.rating = parseInt(starFilter, 10);
 
       const response = await api.get('/ratings/owner', { params });
       if (response?.data?.ratings) {
-        let fetchedRatings = response.data.ratings;
-        if (starFilter !== 'ALL') {
-          const filterNum = parseInt(starFilter, 10);
-          fetchedRatings = fetchedRatings.filter((r) => r.rating === filterNum || r.ratingValue === filterNum);
-        }
-        setRatingsList(fetchedRatings);
+        setRatingsList(response.data.ratings);
 
         if (response.meta) {
           const m = response.meta.pagination || response.meta;
           setRatingsMeta({
             page: m.page || page,
             pageSize: m.pageSize || m.limit || limit,
-            totalItems: m.totalItems || fetchedRatings.length,
+            totalItems: m.totalItems || response.data.ratings.length,
             totalPages: m.totalPages || 1
           });
         }
@@ -127,7 +135,7 @@ export const StoreOwnerDashboardPage = () => {
     } finally {
       setRatingsLoading(false);
     }
-  }, [page, limit, sortBy, order, debouncedSearch, starFilter]);
+  }, [page, limit, sortBy, order, debouncedSearch, debouncedUserName, debouncedUserEmail, starFilter]);
 
   useEffect(() => {
     fetchDashboardMetrics();
@@ -140,7 +148,41 @@ export const StoreOwnerDashboardPage = () => {
   // Reset page when search or star filter changes
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, starFilter]);
+  }, [debouncedSearch, debouncedUserName, debouncedUserEmail, starFilter]);
+
+  const handleFilterChange = (e) => {
+    setFilters((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ search: '', userName: '', userEmail: '' });
+    setStarFilter('ALL');
+    setPage(1);
+  };
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setOrder((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'));
+    } else {
+      setSortBy(field);
+      setOrder('ASC');
+    }
+    setPage(1);
+  };
+
+  const renderSortIndicator = (field) => {
+    if (sortBy !== field) {
+      return <ArrowUpDown size={12} style={{ opacity: 0.4, marginLeft: '4px' }} />;
+    }
+    return order === 'ASC' ? (
+      <ArrowUp size={12} color="#818cf8" style={{ marginLeft: '4px' }} />
+    ) : (
+      <ArrowDown size={12} color="#818cf8" style={{ marginLeft: '4px' }} />
+    );
+  };
 
   const totalRatingsCount = dashboardData.totalRatings || 0;
   const dist = dashboardData.ratingDistribution || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -160,6 +202,8 @@ export const StoreOwnerDashboardPage = () => {
     if (avg > 0) return 'Needs Improvement';
     return 'New Merchant Store';
   };
+
+  const hasActiveFilters = Boolean(filters.search || filters.userName || filters.userEmail || starFilter !== 'ALL');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -390,80 +434,97 @@ export const StoreOwnerDashboardPage = () => {
         </div>
       </div>
 
-      {/* 4. USERS WHO RATED THE STORE (TABLE & CONTROLS) */}
+      {/* 4. USERS WHO RATED THE STORE (TABLE & SEARCH CONTROLS) */}
       <div className="glass-card" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Users size={18} color="#818cf8" /> Customers Who Rated Your Store
+              <Users size={18} color="#818cf8" /> Customers Who Rated Your Store ({ratingsMeta.totalItems})
             </h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', margin: '2px 0 0' }}>
-              List of verified customers who have submitted feedback for your store.
+              Sortable, filterable list of customers who have submitted feedback for your store.
             </p>
           </div>
 
-          {/* Star Filter Pills */}
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-            {['ALL', '5', '4', '3', '2', '1'].map((val) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {hasActiveFilters && (
               <button
-                key={val}
                 type="button"
-                onClick={() => setStarFilter(val)}
-                className={`btn btn-sm ${starFilter === val ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                onClick={handleClearFilters}
+                style={{ background: 'none', border: 'none', color: '#818cf8', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
               >
-                {val === 'ALL' ? 'All Ratings' : `${val} ★`}
+                <X size={12} /> Clear Filters
               </button>
-            ))}
+            )}
+
+            {/* Star Filter Pills */}
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {['ALL', '5', '4', '3', '2', '1'].map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setStarFilter(val)}
+                  className={`btn btn-sm ${starFilter === val ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                >
+                  {val === 'ALL' ? 'All Ratings' : `${val} ★`}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Live Search & Sort Bar */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+        {/* Live Multi-Field Search Inputs */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <div style={{ position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
             <input
               type="text"
-              placeholder="Search by customer name or email..."
+              name="search"
+              placeholder="Keyword search across all fields..."
               className="form-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '2.2rem' }}
+              value={filters.search}
+              onChange={handleFilterChange}
+              style={{ paddingLeft: '2rem', fontSize: '0.82rem' }}
             />
           </div>
 
           <div>
-            <select
+            <input
+              type="text"
+              name="userName"
+              placeholder="Search by Customer Name..."
               className="form-input"
-              value={`${sortBy}_${order}`}
-              onChange={(e) => {
-                const [newSort, newOrder] = e.target.value.split('_');
-                setSortBy(newSort);
-                setOrder(newOrder);
-                setPage(1);
-              }}
-              style={{ background: 'rgba(15, 23, 42, 0.9)' }}
-            >
-              <option value="createdAt_DESC">Date: Newest First</option>
-              <option value="createdAt_ASC">Date: Oldest First</option>
-              <option value="rating_DESC">Rating: Highest First</option>
-              <option value="rating_ASC">Rating: Lowest First</option>
-              <option value="userName_ASC">Customer Name (A–Z)</option>
-              <option value="userName_DESC">Customer Name (Z–A)</option>
-              <option value="userEmail_ASC">Customer Email (A–Z)</option>
-            </select>
+              value={filters.userName}
+              onChange={handleFilterChange}
+              style={{ fontSize: '0.82rem' }}
+            />
+          </div>
+
+          <div>
+            <input
+              type="text"
+              name="userEmail"
+              placeholder="Search by Customer Email..."
+              className="form-input"
+              value={filters.userEmail}
+              onChange={handleFilterChange}
+              style={{ fontSize: '0.82rem' }}
+            />
           </div>
         </div>
 
-        {/* Ratings Table */}
+        {/* Ratings Table with Click-to-Sort Headers */}
         {ratingsList.length === 0 && !ratingsLoading ? (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-subtle)' }}>
+          <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--text-subtle)' }}>
             <Users size={40} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem' }} />
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.35rem' }}>No Ratings Match Your Filters</h3>
-            <p style={{ fontSize: '0.85rem', maxWidth: '380px', margin: '0 auto' }}>
-              {searchTerm || starFilter !== 'ALL'
-                ? 'Try clearing your search query or selecting "All Ratings".'
-                : 'Your store has not received ratings yet. Once customers rate your store, their reviews will appear here.'}
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '0.35rem' }}>
+              {hasActiveFilters ? 'No Matching Customer Ratings Found' : 'No ratings yet.'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', maxWidth: '420px', margin: '0 auto' }}>
+              {hasActiveFilters
+                ? 'Try broadening your search criteria or clearing active filters.'
+                : 'Your store has not received any reviews yet. Share your store link with customers to start collecting feedback!'}
             </p>
           </div>
         ) : (
@@ -471,11 +532,32 @@ export const StoreOwnerDashboardPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Customer Name & Email</th>
-                  <th>Customer Address</th>
-                  <th>Submitted Rating</th>
+                  <th onClick={() => handleSort('userName')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      Customer Name {renderSortIndicator('userName')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('userEmail')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      Email Address {renderSortIndicator('userEmail')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('userAddress')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      Location / Address {renderSortIndicator('userAddress')}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('rating')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      Submitted Rating {renderSortIndicator('rating')}
+                    </div>
+                  </th>
                   <th>Review Feedback</th>
-                  <th>Date Submitted</th>
+                  <th onClick={() => handleSort('createdAt')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      Date Submitted {renderSortIndicator('createdAt')}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -485,7 +567,9 @@ export const StoreOwnerDashboardPage = () => {
                       <div style={{ fontWeight: 600, color: '#f8fafc' }}>
                         {review.userName}
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-subtle)' }}>
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-subtle)' }}>
                         {review.userEmail}
                       </div>
                     </td>

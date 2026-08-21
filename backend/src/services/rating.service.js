@@ -237,7 +237,7 @@ class RatingService {
 
   /**
    * Get all customer ratings for stores owned by the authenticated STORE_OWNER
-   * Strictly resolves stores belonging to `ownerId` with sorting and pagination
+   * Strictly resolves stores belonging to `ownerId` with multi-field search, sorting, and pagination
    */
   async getStoreOwnerRatings(ownerId, query = {}) {
     const numericOwnerId = parseInt(ownerId, 10);
@@ -256,6 +256,7 @@ class RatingService {
       ratingValue: 'r.rating_value',
       createdAt: 'r.created_at',
       created_at: 'r.created_at',
+      date: 'r.created_at',
       id: 'r.id'
     };
 
@@ -263,18 +264,47 @@ class RatingService {
     const sortColumn = sortFieldMap[requestedSort] || 'r.created_at';
     const order = (query.order || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
+    const { search, userName, name, userEmail, email, rating } = query;
+
     if (db.getStatus().connected) {
-      // 1. Total Count Query for Owner's Stores
+      const conditions = ['s.owner_id = $1'];
+      const params = [numericOwnerId];
+
+      if (search && search.trim()) {
+        params.push(`%${search.trim()}%`);
+        conditions.push(`(u.name ILIKE $${params.length} OR u.email ILIKE $${params.length} OR u.address ILIKE $${params.length} OR s.name ILIKE $${params.length})`);
+      }
+
+      if ((userName || name) && (userName || name).trim()) {
+        params.push(`%${(userName || name).trim()}%`);
+        conditions.push(`u.name ILIKE $${params.length}`);
+      }
+
+      if ((userEmail || email) && (userEmail || email).trim()) {
+        params.push(`%${(userEmail || email).trim()}%`);
+        conditions.push(`u.email ILIKE $${params.length}`);
+      }
+
+      if (rating && !isNaN(parseInt(rating, 10))) {
+        params.push(parseInt(rating, 10));
+        conditions.push(`r.rating_value = $${params.length}`);
+      }
+
+      const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
+      // 1. Total Count Query for Owner's Filtered Ratings
       const countRes = await db.query(
         `SELECT COUNT(*)::int as count
          FROM ratings r
          JOIN stores s ON r.store_id = s.id
-         WHERE s.owner_id = $1`,
-        [numericOwnerId]
+         JOIN users u ON r.user_id = u.id
+         ${whereClause}`,
+        params
       );
       const totalItems = countRes.rows[0].count;
 
       // 2. Data Query with Customer Profile Attributes
+      const dataParams = [...params, limit, offset];
       const dataQuery = `
         SELECT 
           r.id,
@@ -294,12 +324,12 @@ class RatingService {
         FROM ratings r
         JOIN stores s ON r.store_id = s.id
         JOIN users u ON r.user_id = u.id
-        WHERE s.owner_id = $1
+        ${whereClause}
         ORDER BY ${sortColumn} ${order}
-        LIMIT $2 OFFSET $3
+        LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}
       `;
 
-      const dataRes = await db.query(dataQuery, [numericOwnerId, limit, offset]);
+      const dataRes = await db.query(dataQuery, dataParams);
 
       return {
         ratings: dataRes.rows,
@@ -309,6 +339,32 @@ class RatingService {
 
     // Mock Fallback
     let filtered = mockRatingsCollection.filter((r) => r.owner_id === numericOwnerId);
+
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          (r.userName && r.userName.toLowerCase().includes(q)) ||
+          (r.userEmail && r.userEmail.toLowerCase().includes(q)) ||
+          (r.userAddress && r.userAddress.toLowerCase().includes(q)) ||
+          (r.storeName && r.storeName.toLowerCase().includes(q))
+      );
+    }
+
+    if ((userName || name) && (userName || name).trim()) {
+      const q = (userName || name).trim().toLowerCase();
+      filtered = filtered.filter((r) => r.userName && r.userName.toLowerCase().includes(q));
+    }
+
+    if ((userEmail || email) && (userEmail || email).trim()) {
+      const q = (userEmail || email).trim().toLowerCase();
+      filtered = filtered.filter((r) => r.userEmail && r.userEmail.toLowerCase().includes(q));
+    }
+
+    if (rating && !isNaN(parseInt(rating, 10))) {
+      const rNum = parseInt(rating, 10);
+      filtered = filtered.filter((r) => r.rating_value === rNum);
+    }
 
     // Mock Sorting
     filtered.sort((a, b) => {
