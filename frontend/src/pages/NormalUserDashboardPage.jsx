@@ -271,7 +271,7 @@ export const NormalUserDashboardPage = () => {
           <div className="glass-card" style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Filter size={14} /> Live Search & Filter Controls
+                <Filter size={14} /> Search & Filter Stores
               </div>
               {hasActiveFilters && (
                 <button

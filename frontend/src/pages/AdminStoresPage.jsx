@@ -163,9 +163,6 @@ export const AdminStoresPage = () => {
             </Link>
           </div>
           <h1 style={{ fontSize: '2rem' }}>Store Management Directory</h1>
-          <p style={{ fontSize: '0.95rem' }}>
-            Server-side filtered, sorted, and paginated directory of verified platform store listings.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -184,7 +181,7 @@ export const AdminStoresPage = () => {
       <div className="glass-card" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Filter size={14} /> Live Server-Side Filters
+            <Filter size={14} /> Filters
           </div>
           {hasActiveFilters && (
             <button
