@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Star, ShieldCheck, Store, User, LogOut, LayoutDashboard, LogIn, UserPlus, Shield, ShoppingBag } from 'lucide-react';
+import { Star, ShieldCheck, Store, User, LogOut, LayoutDashboard, LogIn, UserPlus, Shield, ShoppingBag, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { healthService } from '../../services/healthService';
 import { StatusBadge } from './StatusBadge';
+import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout, isAdmin, isStoreOwner, isNormalUser } = useAuth();
   const location = useLocation();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const [healthStatus, setHealthStatus] = useState({
     isOnline: false,
@@ -206,6 +208,15 @@ export const Navbar = () => {
                 </span>
               </div>
               <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="btn btn-secondary btn-sm"
+                title="Change Password"
+                style={{ padding: '0.35rem 0.65rem' }}
+              >
+                <KeyRound size={14} />
+              </button>
+              <button
                 onClick={logout}
                 className="btn btn-secondary btn-sm"
                 title="Logout"
@@ -226,6 +237,12 @@ export const Navbar = () => {
           )}
         </nav>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
     </header>
   );
 };
