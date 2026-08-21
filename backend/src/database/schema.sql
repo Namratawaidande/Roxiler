@@ -59,12 +59,16 @@ CREATE TABLE IF NOT EXISTS ratings (
 -- ==============================================================================
 -- 5. PERFORMANCE & COMPOSITE INDEXES
 -- ==============================================================================
--- Fast user lookups & filtering by email and role
+-- Fast user lookups & filtering by email, role, name and creation date
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_name ON users(name);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at DESC);
 
 -- Fast store lookups, searches & owner associations
 CREATE INDEX IF NOT EXISTS idx_stores_name ON stores(name);
+CREATE INDEX IF NOT EXISTS idx_stores_email ON stores(email);
+CREATE INDEX IF NOT EXISTS idx_stores_address ON stores(address);
 CREATE INDEX IF NOT EXISTS idx_stores_owner_id ON stores(owner_id);
 CREATE INDEX IF NOT EXISTS idx_stores_created_at ON stores(created_at DESC);
 
