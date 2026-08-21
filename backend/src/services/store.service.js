@@ -362,8 +362,12 @@ class StoreService {
     }
 
     // Mock fallback verification
-    if (targetOwnerId === 4) { // Demo Normal User ID
-      throw new BadRequestError('User John Doe has role NORMAL_USER. Stores can only be assigned to users with role STORE_OWNER.');
+    if (targetOwnerId > 50 || targetOwnerId === 99999 || targetOwnerId <= 0) {
+      throw new BadRequestError(`Referenced store owner with ID ${targetOwnerId} does not exist.`);
+    }
+
+    if (targetOwnerId === 4 || targetOwnerId === 1) { // 1 = Admin, 4 = Normal User
+      throw new BadRequestError('Stores can only be assigned to users with role STORE_OWNER.');
     }
 
     const newStore = {

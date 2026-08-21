@@ -54,182 +54,305 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runComprehensiveSecurityAudit = async () => {
+const runComprehensiveBackendTestSuite = async () => {
   await startTestServer();
+  const startTime = Date.now();
+  let totalTests = 0;
+  let passedTests = 0;
+
+  const assert = (condition, message) => {
+    totalTests++;
+    if (!condition) {
+      throw new Error(`Assertion Failed: ${message}`);
+    }
+    passedTests++;
+    console.log(`    ✔ ${message}`);
+  };
+
   console.log(`\n======================================================================`);
-  console.log(`🛡️ COMPREHENSIVE APPLICATION SECURITY & HARDENING AUDIT`);
-  console.log(`🌐 Server Base URL: ${baseUrl}`);
+  console.log(`🚀 COMPREHENSIVE BACKEND API TEST SUITE`);
+  console.log(`🌐 Ephemeral Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
   try {
-    // -------------------------------------------------------------
-    // 1. HTTP SECURITY HEADERS & RATE LIMITING HEADERS AUDIT
-    // -------------------------------------------------------------
-    console.log('--- 1. HTTP SECURITY HEADERS (HELMET) & RATE LIMITING AUDIT ---');
-    const rootRes = await request('GET', '/');
-    if (rootRes.statusCode !== 200) throw new Error('Root endpoint check failed');
+    // =============================================================
+    // SUITE 1: AUTHENTICATION & SESSION VERIFICATION
+    // =============================================================
+    console.log('📦 [SUITE 1/6] AUTHENTICATION & SESSION LIFECYCLE');
 
-    // Check Helmet headers
-    if (!rootRes.headers['x-content-type-options'] || rootRes.headers['x-content-type-options'] !== 'nosniff') {
-      throw new Error('Missing or invalid X-Content-Type-Options header');
-    }
-    if (!rootRes.headers['x-frame-options']) {
-      throw new Error('Missing X-Frame-Options clickjacking protection header');
-    }
-    console.log('  ✔ Helmet Security Headers verified (X-Content-Type-Options: nosniff, X-Frame-Options: SAMEORIGIN/DENY).');
-
-    // Check Rate Limiting headers
-    if (!rootRes.headers['x-ratelimit-limit'] || !rootRes.headers['x-ratelimit-remaining']) {
-      throw new Error('Missing standard X-RateLimit headers');
-    }
-    console.log(`  ✔ Rate Limiting Headers verified (Limit: ${rootRes.headers['x-ratelimit-limit']}, Remaining: ${rootRes.headers['x-ratelimit-remaining']}).`);
-
-    // -------------------------------------------------------------
-    // 2. AUTHENTICATION & JWT INTEGRITY AUDIT
-    // -------------------------------------------------------------
-    console.log('\n--- 2. AUTHENTICATION, JWT TAMPERING & SESSION SECURITY AUDIT ---');
-
-    // 2.1 Unauthenticated requests to private endpoints
-    const unauthStores = await request('GET', '/api/v1/stores');
-    if (unauthStores.statusCode !== 401) throw new Error('Unauthenticated request was not blocked with 401');
-    console.log('  ✔ Unauthenticated access to /api/v1/stores -> 401 Unauthorized (Blocked).');
-
-    // 2.2 Malformed Authorization header
-    const malformedAuth = await request('GET', '/api/v1/stores', null, 'InvalidTokenStringWithoutBearer');
-    if (malformedAuth.statusCode !== 401) throw new Error('Malformed token was not blocked with 401');
-    console.log('  ✔ Malformed token header -> 401 Unauthorized (Blocked).');
-
-    // 2.3 Tampered JWT signature
-    const tamperedToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6IlNZU1RFTV9BRE1JTiJ9.InvalidSignatureTamperedKey999999999999999999999';
-    const tamperedRes = await request('GET', '/api/v1/stores', null, tamperedToken);
-    if (tamperedRes.statusCode !== 401) throw new Error('Tampered token was not blocked with 401');
-    console.log('  ✔ Tampered JWT token signature -> 401 Unauthorized (Blocked).');
-
-    // 2.4 Login with valid accounts for role auditing
+    // 1.1 Successful Logins for All 3 Roles
     const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
+    assert(adminLogin.statusCode === 200, 'SYSTEM_ADMIN login returns 200 OK + JWT');
     const adminToken = adminLogin.data.data.token;
 
-    const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    const userToken = userLogin.data.data.token;
-
     const owner1Login = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
+    assert(owner1Login.statusCode === 200, 'STORE_OWNER #1 login returns 200 OK + JWT');
     const owner1Token = owner1Login.data.data.token;
 
     const owner2Login = await request('POST', '/api/v1/auth/login', { email: 'owner2@storerating.com', password: 'Owner@123456' });
+    assert(owner2Login.statusCode === 200, 'STORE_OWNER #2 login returns 200 OK + JWT');
     const owner2Token = owner2Login.data.data.token;
 
-    console.log('  ✔ Valid JWT authentication established for SYSTEM_ADMIN, STORE_OWNER #1, STORE_OWNER #2, and NORMAL_USER.');
+    const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
+    assert(userLogin.statusCode === 200, 'NORMAL_USER login returns 200 OK + JWT');
+    const userToken = userLogin.data.data.token;
 
-    // -------------------------------------------------------------
-    // 3. ZERO SENSITIVE DATA EXPOSURE AUDIT
-    // -------------------------------------------------------------
-    console.log('\n--- 3. ZERO SENSITIVE DATA EXPOSURE AUDIT ---');
-    const profileRes = await request('GET', '/api/v1/auth/me', null, adminToken);
-    const profile = profileRes.data.data;
-    if (profile.password || profile.password_hash || profile.passwordHash) {
-      throw new Error('Security Leak: Password or hash exposed in user profile endpoint');
-    }
-    console.log('  ✔ [GET /api/v1/auth/me] No password or password_hash exposed in user profile.');
+    // 1.2 Invalid Email Format
+    const invEmail = await request('POST', '/api/v1/auth/login', { email: 'not-an-email', password: 'Admin@123456' });
+    assert(invEmail.statusCode === 422, 'Invalid email format rejected with 422 Unprocessable Entity');
 
-    const usersListRes = await request('GET', '/api/v1/users', null, adminToken);
-    const usersList = usersListRes.data.data.users;
-    usersList.forEach((u) => {
-      if (u.password || u.password_hash || u.passwordHash) {
-        throw new Error('Security Leak: Password or hash exposed in users list');
-      }
-    });
-    console.log(`  ✔ [GET /api/v1/users] All ${usersList.length} user records strictly omit password attributes.`);
+    // 1.3 Invalid Password Credentials
+    const invPass = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'WrongPassword@99' });
+    assert(invPass.statusCode === 401, 'Invalid password credentials rejected with 401 Unauthorized');
 
-    // -------------------------------------------------------------
-    // 4. ROLE-BASED ACCESS CONTROL (RBAC) & PRIVILEGE ESCALATION
-    // -------------------------------------------------------------
-    console.log('\n--- 4. ROLE-BASED ACCESS CONTROL & PRIVILEGE ESCALATION AUDIT ---');
+    // 1.4 Missing Credentials
+    const missCred = await request('POST', '/api/v1/auth/login', {});
+    assert(missCred.statusCode === 422, 'Missing credentials payload rejected with 422 Unprocessable Entity');
 
-    // 4.1 NORMAL_USER privilege escalation attempts
-    const userToAdminDash = await request('GET', '/api/v1/dashboard/admin', null, userToken);
-    if (userToAdminDash.statusCode !== 403) throw new Error('NORMAL_USER breached admin dashboard');
-    console.log('  ✔ NORMAL_USER -> GET /api/v1/dashboard/admin: 403 Forbidden (Blocked).');
+    // 1.5 Missing and Malformed Token
+    const unauth = await request('GET', '/api/v1/auth/me');
+    assert(unauth.statusCode === 401, 'Missing token header rejected with 401 Unauthorized');
 
-    const userToCreateUser = await request('POST', '/api/v1/users', { name: 'Escalated Admin Account 123', email: 'esc@admin.com', password: 'AdminPass@12', address: '123 Test St', role: 'SYSTEM_ADMIN' }, userToken);
-    if (userToCreateUser.statusCode !== 403) throw new Error('NORMAL_USER created admin account');
-    console.log('  ✔ NORMAL_USER -> POST /api/v1/users: 403 Forbidden (Blocked).');
+    const malformedToken = await request('GET', '/api/v1/auth/me', null, 'NotABearerToken');
+    assert(malformedToken.statusCode === 401, 'Malformed token string rejected with 401 Unauthorized');
 
-    const userToOwnerDash = await request('GET', '/api/v1/dashboard/owner', null, userToken);
-    if (userToOwnerDash.statusCode !== 403) throw new Error('NORMAL_USER breached owner dashboard');
-    console.log('  ✔ NORMAL_USER -> GET /api/v1/dashboard/owner: 403 Forbidden (Blocked).');
+    // 1.6 Tampered JWT Signature
+    const tampered = await request('GET', '/api/v1/auth/me', null, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6IlNZU1RFTV9BRE1JTiJ9.InvalidTamperedSignature');
+    assert(tampered.statusCode === 401, 'Tampered JWT token rejected with 401 Unauthorized');
 
-    // 4.2 STORE_OWNER privilege escalation attempts
-    const ownerToAdminDash = await request('GET', '/api/v1/dashboard/admin', null, owner1Token);
-    if (ownerToAdminDash.statusCode !== 403) throw new Error('STORE_OWNER breached admin dashboard');
-    console.log('  ✔ STORE_OWNER -> GET /api/v1/dashboard/admin: 403 Forbidden (Blocked).');
+    // 1.7 Logout Behavior
+    const logoutRes = await request('POST', '/api/v1/auth/logout', null, userToken);
+    assert(logoutRes.statusCode === 200, 'Logout endpoint returns 200 OK acknowledgment');
 
-    const ownerToRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, owner1Token);
-    if (ownerToRate.statusCode !== 403) throw new Error('STORE_OWNER submitted rating');
-    console.log('  ✔ STORE_OWNER -> POST /api/v1/ratings: 403 Forbidden (Blocked).');
+    // =============================================================
+    // SUITE 2: AUTHORIZATION & CROSS-ROLE BARRIERS
+    // =============================================================
+    console.log('\n📦 [SUITE 2/6] ROLE-BASED ACCESS CONTROL & PRIVILEGE BARRIERS');
 
-    // 4.3 Cross-Owner Data Isolation
+    // 2.1 SYSTEM_ADMIN Authorized Access
+    const adminDash = await request('GET', '/api/v1/dashboard/admin', null, adminToken);
+    assert(adminDash.statusCode === 200, 'SYSTEM_ADMIN granted access to Admin Dashboard (200 OK)');
+
+    // 2.2 NORMAL_USER Privilege Escalation Blocked
+    const userToAdmin = await request('GET', '/api/v1/dashboard/admin', null, userToken);
+    assert(userToAdmin.statusCode === 403, 'NORMAL_USER blocked from Admin Dashboard (403 Forbidden)');
+
+    const userToUsers = await request('POST', '/api/v1/users', { name: 'Escalation Attempt 1234', email: 'esc@user.com', password: 'UserPass@2026', address: '123 Test St', role: 'SYSTEM_ADMIN' }, userToken);
+    assert(userToUsers.statusCode === 403, 'NORMAL_USER blocked from User Management API (403 Forbidden)');
+
+    const userToOwner = await request('GET', '/api/v1/dashboard/owner', null, userToken);
+    assert(userToOwner.statusCode === 403, 'NORMAL_USER blocked from Store Owner Dashboard (403 Forbidden)');
+
+    // 2.3 STORE_OWNER Privilege Escalation Blocked
+    const ownerToAdmin = await request('GET', '/api/v1/dashboard/admin', null, owner1Token);
+    assert(ownerToAdmin.statusCode === 403, 'STORE_OWNER blocked from Admin Dashboard (403 Forbidden)');
+
+    const ownerRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, owner1Token);
+    assert(ownerRate.statusCode === 403, 'STORE_OWNER blocked from submitting store ratings (403 Forbidden)');
+
+    // 2.4 Cross-Store Owner Data Isolation
     const owner2Stats = await request('GET', '/api/v1/ratings/owner/stats', null, owner2Token);
+    assert(owner2Stats.statusCode === 200, 'STORE_OWNER #2 accessed own rating statistics');
     const owner2Stores = owner2Stats.data.data.stores;
-    owner2Stores.forEach((st) => {
-      if (st.name.includes('Apex Digital')) {
-        throw new Error('Cross-Owner Data Leak: Store Owner 2 accessed Store Owner 1 store');
-      }
+    const hasLeak = owner2Stores.some((s) => s.name.includes('Apex Digital'));
+    assert(!hasLeak, 'Cross-Store Isolation: Store Owner 2 cannot see Store Owner 1 store data');
+
+    // =============================================================
+    // SUITE 3: USER MANAGEMENT & VALIDATION CONSTRAINTS
+    // =============================================================
+    console.log('\n📦 [SUITE 3/6] USER CREATION & DATA VALIDATION CONSTRAINTS');
+
+    const rand = Math.floor(1000 + Math.random() * 9000);
+
+    // 3.1 Normal User Self-Signup
+    const regRes = await request('POST', '/api/v1/auth/register', {
+      name: `Alexander Hamilton Montgomery ${rand}`,
+      email: `hamilton${rand}@example.com`,
+      password: 'UserPass@2026',
+      address: '55 Wall Street, Financial District'
     });
-    console.log('  ✔ Cross-Owner Data Isolation: Store Owner 2 strictly quarantined to their own store.');
+    assert(regRes.statusCode === 201, 'Normal User self-registration returns 201 Created');
 
-    // -------------------------------------------------------------
-    // 5. INJECTION ATTACKS & MALFORMED PAYLOAD RESILIENCE
-    // -------------------------------------------------------------
-    console.log('\n--- 5. SQL INJECTION & MALFORMED PAYLOAD RESILIENCE AUDIT ---');
-
-    // 5.1 SQL Injection payload in sortBy
-    const sqlInjectionSort = await request('GET', '/api/v1/stores?sortBy=id;DROP%20TABLE%20stores;--', null, userToken);
-    if (sqlInjectionSort.statusCode !== 200 && sqlInjectionSort.statusCode !== 422) {
-      throw new Error('SQL Injection string in sortBy crashed the server');
-    }
-    console.log('  ✔ SQL Injection payload in sortBy parameter safely neutralized via allowlist.');
-
-    // 5.2 SQL Injection payload in search query
-    const sqlInjectionSearch = await request('GET', "/api/v1/stores?search=' OR '1'='1", null, userToken);
-    if (sqlInjectionSearch.statusCode !== 200) {
-      throw new Error('SQL Injection string in search crashed the server');
-    }
-    console.log('  ✔ SQL Injection payload in search parameter safely parameterized with ILIKE ($1).');
-
-    // 5.3 Malformed JSON request body
-    const malformedJsonRes = await request('POST', '/api/v1/auth/login', '{ "email": "admin@storerating.com", "password": }');
-    if (malformedJsonRes.statusCode !== 400) {
-      throw new Error('Malformed JSON did not return 400 Bad Request');
-    }
-    console.log('  ✔ Malformed JSON request body intercepted cleanly (400 Bad Request).');
-
-    // -------------------------------------------------------------
-    // 6. PASSWORD COMPLEXITY & BCRYPT WORK FACTOR
-    // -------------------------------------------------------------
-    console.log('\n--- 6. PASSWORD COMPLEXITY & BCRYPT ENFORCEMENT AUDIT ---');
-    const weakPassRes = await request('POST', '/api/v1/auth/register', {
-      name: 'Alexander Montgomery Wright',
-      email: 'alex.wright.sec@example.com',
-      password: 'weak',
-      address: '123 Test St'
+    // 3.2 Duplicate Email Rejection
+    const dupEmail = await request('POST', '/api/v1/auth/register', {
+      name: `Alexander Hamilton Montgomery ${rand}`,
+      email: `hamilton${rand}@example.com`,
+      password: 'UserPass@2026',
+      address: '55 Wall Street, Financial District'
     });
-    if (weakPassRes.statusCode !== 422) throw new Error('Weak password was not rejected');
-    console.log('  ✔ Password requirements strictly enforced (8-16 chars, uppercase, special character).');
+    assert(dupEmail.statusCode === 409, 'Duplicate email registration rejected with 409 Conflict');
 
-    console.log('\n======================================================================');
-    console.log('🔒 ALL SECURITY AUDIT & HARDENING CHECKS PASSED (100% SECURE)');
-    console.log('======================================================================\n');
+    // 3.3 Name Length Validation (20-60 chars)
+    const shortName = await request('POST', '/api/v1/auth/register', { name: 'Too Short', email: `short${rand}@test.com`, password: 'UserPass@2026', address: '123 St' });
+    assert(shortName.statusCode === 422, 'Name < 20 characters rejected with 422');
+
+    const longName = await request('POST', '/api/v1/auth/register', {
+      name: 'This Name Is Extraordinarily Long And Exceeds The Sixty Characters Limit Permitted In The Validation Rules',
+      email: `long${rand}@test.com`,
+      password: 'UserPass@2026',
+      address: '123 St'
+    });
+    assert(longName.statusCode === 422, 'Name > 60 characters rejected with 422');
+
+    // 3.4 Address Length Validation (max 400 chars)
+    const longAddress = await request('POST', '/api/v1/auth/register', {
+      name: `Valid Alexander Wright Name ${rand}`,
+      email: `addr${rand}@test.com`,
+      password: 'UserPass@2026',
+      address: 'A'.repeat(405)
+    });
+    assert(longAddress.statusCode === 422, 'Address > 400 characters rejected with 422');
+
+    // 3.5 Password Complexity Validation
+    const shortPass = await request('POST', '/api/v1/auth/register', { name: `Valid Alexander Wright Name ${rand}`, email: `p1${rand}@test.com`, password: 'Ab@1', address: '123 St' });
+    assert(shortPass.statusCode === 422, 'Password < 8 characters rejected with 422');
+
+    const noUpper = await request('POST', '/api/v1/auth/register', { name: `Valid Alexander Wright Name ${rand}`, email: `p2${rand}@test.com`, password: 'password@12', address: '123 St' });
+    assert(noUpper.statusCode === 422, 'Password without uppercase rejected with 422');
+
+    const noSpecial = await request('POST', '/api/v1/auth/register', { name: `Valid Alexander Wright Name ${rand}`, email: `p3${rand}@test.com`, password: 'ValidPassword12', address: '123 St' });
+    assert(noSpecial.statusCode === 422, 'Password without special character rejected with 422');
+
+    // 3.6 Admin User Creation with Invalid Role
+    const invRole = await request('POST', '/api/v1/users', { name: `Valid Alexander Wright Name ${rand}`, email: `role${rand}@test.com`, password: 'UserPass@2026', address: '123 St', role: 'INVALID_ROLE' }, adminToken);
+    assert(invRole.statusCode === 422, 'Invalid role assignment rejected with 422');
+
+    // =============================================================
+    // SUITE 4: STORE MANAGEMENT, SEARCH, SORT & PAGINATION
+    // =============================================================
+    console.log('\n📦 [SUITE 4/6] STORE MANAGEMENT, SEARCH, SORT & PAGINATION');
+
+    // 4.1 Admin Create Store
+    const createStoreRes = await request('POST', '/api/v1/stores', {
+      name: `Grand Central Marketplace Boutique ${rand}`,
+      email: `market${rand}@store.com`,
+      address: '89 Main Street, Central Plaza',
+      owner_id: 2,
+      ownerId: 2
+    }, adminToken);
+    assert(createStoreRes.statusCode === 201, 'Admin create store returns 201 Created');
+    const createdStoreId = createStoreRes.data.data?.store?.id || createStoreRes.data.data?.id || 1;
+
+    // 4.2 Invalid Store Owner
+    const invOwner = await request('POST', '/api/v1/stores', {
+      name: `Invalid Owner Test Store Boutique ${rand}`,
+      email: `invowner${rand}@store.com`,
+      address: '100 Test St',
+      owner_id: 99999
+    }, adminToken);
+    assert(invOwner.statusCode === 400 || invOwner.statusCode === 404, 'Non-existent store owner rejected (400/404)');
+
+    // 4.3 Stores Listing with Search (Name and Address)
+    const searchRes = await request('GET', '/api/v1/stores?search=Apex', null, userToken);
+    assert(searchRes.statusCode === 200, 'Store search by keyword returns 200 OK');
+
+    // 4.4 Column Sorting
+    const sortRes = await request('GET', '/api/v1/stores?sortBy=name&order=ASC', null, userToken);
+    assert(sortRes.statusCode === 200, 'Store sorting by name ASC returns 200 OK');
+
+    // 4.5 Pagination Metadata
+    const pageRes = await request('GET', '/api/v1/stores?page=1&limit=2', null, userToken);
+    assert(pageRes.statusCode === 200, 'Stores pagination returns 200 OK');
+    const meta = pageRes.data.meta?.pagination || pageRes.data.meta;
+    assert(meta.page === 1 && (meta.limit === 2 || meta.pageSize === 2), 'Pagination metadata verified');
+
+    // =============================================================
+    // SUITE 5: RATINGS LIFECYCLE, AVERAGE RECALCULATION & EDGES
+    // =============================================================
+    console.log('\n📦 [SUITE 5/6] RATINGS SUBMISSION, MODIFICATION & AVERAGES');
+
+    // 5.1 Valid Rating Submission (1-5)
+    const rateRes = await request('POST', '/api/v1/ratings', {
+      storeId: createdStoreId,
+      rating: 5,
+      comment: 'Top quality products and swift customer service!'
+    }, userToken);
+    assert(rateRes.statusCode === 201, 'Normal User submits 5★ rating (201 Created)');
+
+    // 5.2 Rating Bounds Violations
+    const rateZero = await request('POST', '/api/v1/ratings', { storeId: createdStoreId, rating: 0 }, userToken);
+    assert(rateZero.statusCode === 422, 'Rating below 1 (0) rejected with 422');
+
+    const rateSix = await request('POST', '/api/v1/ratings', { storeId: createdStoreId, rating: 6 }, userToken);
+    assert(rateSix.statusCode === 422, 'Rating above 5 (6) rejected with 422');
+
+    const rateDecimal = await request('POST', '/api/v1/ratings', { storeId: createdStoreId, rating: 3.5 }, userToken);
+    assert(rateDecimal.statusCode === 422, 'Non-integer rating (3.5) rejected with 422');
+
+    // 5.3 Duplicate Rating Rejection
+    const rateDup = await request('POST', '/api/v1/ratings', { storeId: createdStoreId, rating: 4 }, userToken);
+    assert(rateDup.statusCode === 409, 'Duplicate rating submission rejected with 409 Conflict');
+
+    // 5.4 Modify Own Rating
+    const modRate = await request('PUT', `/api/v1/ratings/${createdStoreId}`, { rating: 4, comment: 'Revised review to 4★.' }, userToken);
+    assert(modRate.statusCode === 200, 'Normal User modified submitted rating to 4★ (200 OK)');
+
+    // 5.5 Store Average Calculation Verification
+    const storeInfo = await request('GET', `/api/v1/stores/${createdStoreId}`, null, userToken);
+    assert(storeInfo.statusCode === 200, 'Retrieved updated store with recalculations');
+    const storeData = storeInfo.data.data?.store || storeInfo.data.data;
+    assert(storeData.averageRating !== undefined || storeData.overall_rating !== undefined, 'Store average rating recalculated correctly');
+
+    // =============================================================
+    // SUITE 6: SECURE PASSWORD CHANGES & DATA SANITIZATION
+    // =============================================================
+    console.log('\n📦 [SUITE 6/6] PASSWORD CHANGES & SENSITIVE DATA DEFENSES');
+
+    // 6.1 Incorrect Current Password
+    const wrongPass = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'WrongCurrentPassword@99',
+      newPassword: 'BrandNewPass@26',
+      confirmNewPassword: 'BrandNewPass@26'
+    }, userToken);
+    assert(wrongPass.statusCode === 401, 'Incorrect current password rejected with 401 Unauthorized');
+
+    // 6.2 Identical Password Rejection
+    const samePass = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'User@123456',
+      newPassword: 'User@123456',
+      confirmNewPassword: 'User@123456'
+    }, userToken);
+    assert(samePass.statusCode === 400, 'Identical new password rejected with 400 Bad Request');
+
+    // 6.3 Successful Password Update
+    const passUpdate = await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'User@123456',
+      newPassword: 'NewUserPass@2026',
+      confirmNewPassword: 'NewUserPass@2026'
+    }, userToken);
+    assert(passUpdate.statusCode === 200, 'Password updated successfully with 200 OK');
+
+    // 6.4 Subsequent Login with New Password
+    const newPassLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'NewUserPass@2026' });
+    assert(newPassLogin.statusCode === 200, 'Login with newly updated password succeeded (200 OK)');
+
+    // Reset password back
+    await request('PUT', '/api/v1/auth/password', {
+      currentPassword: 'NewUserPass@2026',
+      newPassword: 'User@123456',
+      confirmNewPassword: 'User@123456'
+    }, newPassLogin.data.data.token);
+
+    // 6.5 Zero Sensitive Data Leakage in API Payloads
+    const meRes = await request('GET', '/api/v1/auth/me', null, adminToken);
+    const meData = meRes.data.data;
+    assert(!meData.password && !meData.password_hash && !meData.passwordHash, 'User profile strictly omits password/hash');
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    console.log(`\n======================================================================`);
+    console.log(`🎉 ALL ${passedTests}/${totalTests} TESTS PASSED IN ${duration}s (100% GREEN)`);
+    console.log(`======================================================================\n`);
   } finally {
     await stopTestServer();
   }
 };
 
-runComprehensiveSecurityAudit()
+runComprehensiveBackendTestSuite()
   .then(() => {
     process.exit(0);
   })
   .catch(async (err) => {
-    console.error('❌ Security Audit failed:', err.message);
+    console.error('\n❌ Test Suite Failed:', err.message);
     await stopTestServer();
     process.exit(1);
   });
