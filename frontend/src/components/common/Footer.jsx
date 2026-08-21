@@ -1,12 +1,12 @@
 import React from 'react';
-import { Database, Layers, ShieldCheck, Zap } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 export const Footer = () => {
   return (
     <footer style={{
       background: 'rgba(11, 15, 25, 0.95)',
       borderTop: '1px solid var(--border-color)',
-      padding: '2rem 1.5rem',
+      padding: '1.5rem',
       marginTop: 'auto'
     }}>
       <div style={{
@@ -16,34 +16,27 @@ export const Footer = () => {
         flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '1.5rem'
+        gap: '1rem'
       }}>
-        <div>
-          <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.925rem' }}>
-            Store Rating Platform Foundation
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
+            width: '24px',
+            height: '24px',
+            borderRadius: '6px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Star size={14} color="#fff" fill="#fff" />
           </div>
-          <div style={{ color: 'var(--text-subtle)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-            React.js + Express.js + PostgreSQL + JWT + RBAC
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span className="badge badge-primary">
-            <Zap size={11} /> React (Vite)
-          </span>
-          <span className="badge badge-cyan">
-            <Layers size={11} /> Express API
-          </span>
-          <span className="badge badge-success">
-            <Database size={11} /> PostgreSQL Pool
-          </span>
-          <span className="badge badge-warning">
-            <ShieldCheck size={11} /> JWT & Bcrypt
+          <span style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.9rem' }}>
+            Store<span style={{ color: '#818cf8' }}>Rating</span>
           </span>
         </div>
 
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
-          Environment: <span style={{ color: '#818cf8', fontWeight: 600 }}>{import.meta.env.MODE}</span>
+        <div style={{ fontSize: '0.825rem', color: 'var(--text-subtle)' }}>
+          © {new Date().getFullYear()} Store Rating Platform. All rights reserved.
         </div>
       </div>
     </footer>

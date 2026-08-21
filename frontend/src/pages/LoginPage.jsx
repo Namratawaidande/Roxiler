@@ -10,7 +10,7 @@ import { Alert } from '../components/common/Alert';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,8 +19,8 @@ export const LoginPage = () => {
   const [successUser, setSuccessUser] = useState(null);
 
   const getDestinationForRole = (role) => {
-    // If a specific redirect was requested in location state (and not generic /login)
-    if (location.state?.from?.pathname && location.state.from.pathname !== '/login') {
+    // If a specific redirect was requested in location state (and not generic /login or /)
+    if (location.state?.from?.pathname && location.state.from.pathname !== '/login' && location.state.from.pathname !== '/') {
       return location.state.from.pathname;
     }
 
@@ -31,9 +31,16 @@ export const LoginPage = () => {
         return '/owner';
       case 'NORMAL_USER':
       default:
-        return '/user';
+        return '/stores';
     }
   };
+
+  // If already authenticated, redirect to role destination
+  React.useEffect(() => {
+    if (isAuthenticated && user?.role) {
+      navigate(getDestinationForRole(user.role), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -42,7 +42,10 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
             Your account role <span className="badge badge-warning">{user?.role}</span> is not authorized to access this page.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-            <Link to="/dashboard-preview" className="btn btn-secondary btn-sm">
+            <Link
+              to={user?.role === 'SYSTEM_ADMIN' ? '/admin' : user?.role === 'STORE_OWNER' ? '/owner' : '/stores'}
+              className="btn btn-secondary btn-sm"
+            >
               <ArrowLeft size={14} /> Go to My Dashboard
             </Link>
           </div>

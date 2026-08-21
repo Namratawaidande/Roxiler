@@ -1,14 +1,13 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '../components/common/ProtectedRoute';
+import { useAuth } from '../context/AuthContext';
 import { RefreshCw } from 'lucide-react';
 
 // Route-level code splitting for optimal bundle size and initial load performance
-const HomePage = lazy(() => import('../pages/HomePage').then((m) => ({ default: m.HomePage })));
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('../pages/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const StoreListPage = lazy(() => import('../pages/StoreListPage').then((m) => ({ default: m.StoreListPage })));
-const DashboardPreviewPage = lazy(() => import('../pages/DashboardPreviewPage').then((m) => ({ default: m.DashboardPreviewPage })));
 const AdminDashboardPage = lazy(() => import('../pages/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
 const AdminUsersPage = lazy(() => import('../pages/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
 const AdminStoresPage = lazy(() => import('../pages/AdminStoresPage').then((m) => ({ default: m.AdminStoresPage })));
@@ -32,17 +31,26 @@ const RouteLoadingFallback = () => (
   </div>
 );
 
+// Fallback route handler: If unauthenticated, redirect to /login; if authenticated, show 404
+const CatchAllRoute = () => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <RouteLoadingFallback />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <NotFoundPage />;
+};
+
 export const AppRoutes = () => {
   return (
     <Suspense fallback={<RouteLoadingFallback />}>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<HomePage />} />
+        {/* Login is the Home Page & Entry Point */}
+        <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
 
-        {/* Authenticated Stores Route */}
+        {/* Public Registration for new customers */}
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Authenticated Stores Directory (Requires Login) */}
         <Route
           path="/stores"
           element={
@@ -52,7 +60,7 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Role-Protected Routes */}
+        {/* Role-Protected Routes for SYSTEM_ADMIN */}
         <Route
           path="/admin"
           element={
@@ -80,6 +88,7 @@ export const AppRoutes = () => {
           }
         />
 
+        {/* Role-Protected Routes for STORE_OWNER */}
         <Route
           path="/owner"
           element={
@@ -89,6 +98,7 @@ export const AppRoutes = () => {
           }
         />
 
+        {/* Role-Protected Routes for NORMAL_USER */}
         <Route
           path="/user"
           element={
@@ -98,8 +108,8 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* 404 Catch-All */}
-        <Route path="*" element={<NotFoundPage />} />
+        {/* Catch-All / Unknown Routes */}
+        <Route path="*" element={<CatchAllRoute />} />
       </Routes>
     </Suspense>
   );
