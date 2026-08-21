@@ -66,14 +66,18 @@ const DEMO_ACCOUNTS = [
   }
 ];
 
+// In-memory store for fallback offline testing
+const registeredMockUsers = new Map();
+
 class AuthService {
   /**
-   * Register a new user
+   * Register a new user (Strictly assigns NORMAL_USER role)
    */
-  async register({ name, email, password, address, role = ROLES.NORMAL_USER }) {
+  async register({ name, email, password, address }) {
     const cleanEmail = email.toLowerCase().trim();
     const cleanName = name.trim();
     const cleanAddress = address ? address.trim() : null;
+    const assignedRole = ROLES.NORMAL_USER; // Guaranteed NORMAL_USER assignment
 
     const hashedPassword = await hashPassword(password);
 
@@ -87,7 +91,7 @@ class AuthService {
         `INSERT INTO users (name, email, password_hash, address, role)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, name, email, address, role, created_at, updated_at`,
-        [cleanName, cleanEmail, hashedPassword, cleanAddress, role]
+        [cleanName, cleanEmail, hashedPassword, cleanAddress, assignedRole]
       );
 
       const user = res.rows[0];
@@ -95,15 +99,26 @@ class AuthService {
       return { user, token };
     }
 
-    // Mock mode fallback (password_hash never returned)
+    // Mock mode fallback uniqueness check
+    if (DEMO_ACCOUNTS.some((u) => u.email.toLowerCase() === cleanEmail) || registeredMockUsers.has(cleanEmail)) {
+      throw new ConflictError('A user with this email address is already registered.');
+    }
+
     const mockUser = {
-      id: Math.floor(Math.random() * 1000) + 10,
+      id: Math.floor(Math.random() * 1000) + 20,
       name: cleanName,
       email: cleanEmail,
       address: cleanAddress || 'Demo Address',
-      role,
+      role: assignedRole,
       created_at: new Date().toISOString()
     };
+
+    registeredMockUsers.set(cleanEmail, {
+      ...mockUser,
+      passwordHash: hashedPassword,
+      rawPassword: password
+    });
+
     const token = generateToken({ id: mockUser.id, email: mockUser.email, role: mockUser.role, name: mockUser.name });
     return { user: mockUser, token, note: 'Mock mode active.' };
   }
@@ -145,8 +160,8 @@ class AuthService {
     }
 
     // Fallback demo matching
-    const demo = DEMO_ACCOUNTS.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (demo && (password === demo.rawPassword || (await comparePassword(password, await hashPassword(demo.rawPassword))))) {
+    const demo = DEMO_ACCOUNTS.find((u) => u.email.toLowerCase() === cleanEmail) || registeredMockUsers.get(cleanEmail);
+    if (demo && (password === demo.rawPassword || (await comparePassword(password, demo.passwordHash || (await hashPassword(demo.rawPassword)))))) {
       const userPayload = {
         id: demo.id,
         name: demo.name,
@@ -178,7 +193,7 @@ class AuthService {
     }
 
     // Mock fallback matching
-    const demo = DEMO_ACCOUNTS.find((u) => u.id === userId) || DEMO_ACCOUNTS[0];
+    const demo = DEMO_ACCOUNTS.find((u) => u.id === userId) || Array.from(registeredMockUsers.values()).find((u) => u.id === userId) || DEMO_ACCOUNTS[0];
     return {
       id: demo.id,
       name: demo.name,
