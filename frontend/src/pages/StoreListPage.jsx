@@ -115,11 +115,16 @@ export const StoreListPage = () => {
     setStores((prevStores) =>
       prevStores.map((s) => {
         if (s.id === updatedInfo.storeId) {
+          const newAvg = updatedInfo.storeAverageRating ?? s.averageRating;
+          const newCount = updatedInfo.storeRatingCount ?? (s.myRating ? s.ratingCount : s.ratingCount + 1);
           return {
             ...s,
             myRating: updatedInfo.rating,
             userSubmittedRating: updatedInfo.rating,
-            myComment: updatedInfo.comment
+            myComment: updatedInfo.comment,
+            averageRating: newAvg,
+            overall_rating: newAvg,
+            ratingCount: newCount
           };
         }
         return s;

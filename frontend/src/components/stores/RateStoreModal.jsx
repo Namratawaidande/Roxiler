@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, X, Check, MessageSquare, Store, AlertCircle } from 'lucide-react';
+import { Star, X, Check, MessageSquare, Store, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Alert } from '../common/Alert';
 import api from '../../services/api';
@@ -23,57 +23,60 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
   }, [store]);
 
   const ratingDescriptions = {
-    1: 'Poor — Needs Major Improvement',
-    2: 'Fair — Below Expectations',
-    3: 'Good — Satisfactory Experience',
-    4: 'Very Good — Highly Recommended',
-    5: 'Exceptional — Outstanding Quality & Service'
+    1: '1 Star — Poor (Needs Improvement)',
+    2: '2 Stars — Fair (Below Expectations)',
+    3: '3 Stars — Good (Satisfactory Experience)',
+    4: '4 Stars — Very Good (Highly Recommended)',
+    5: '5 Stars — Exceptional (Outstanding Quality & Service)'
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return; // Prevent duplicate clicks while in flight
+
     setLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
-      // In full implementation, this hits POST /api/v1/ratings or PUT /api/v1/ratings
-      let response;
-      try {
-        response = await api.post('/ratings', {
-          store_id: store.id,
-          storeId: store.id,
-          rating_value: ratingValue,
+      let res;
+      if (isEditing) {
+        // State B: Modify Existing Rating (PUT /api/v1/ratings/:storeId)
+        res = await api.put(`/ratings/${store.id}`, {
           rating: ratingValue,
           comment: comment.trim() || undefined
         });
-      } catch (postErr) {
-        // Mock fallback update if ratings endpoint is offline
-        response = {
-          success: true,
-          data: {
-            rating: {
-              store_id: store.id,
-              rating_value: ratingValue,
-              comment: comment.trim()
-            }
-          }
-        };
+      } else {
+        // State A: Submit New Rating (POST /api/v1/ratings)
+        res = await api.post('/ratings', {
+          storeId: store.id,
+          rating: ratingValue,
+          comment: comment.trim() || undefined
+        });
       }
 
-      setSuccess(isEditing ? 'Rating modified successfully!' : 'Thank you! Your rating has been submitted.');
+      const returnedRating = res?.data?.rating;
+      setSuccess(
+        isEditing
+          ? 'Your rating has been updated successfully!'
+          : 'Thank you! Your rating has been submitted successfully.'
+      );
+
+      // Optimistic update callback
       setTimeout(() => {
         if (onRatingSubmitted) {
           onRatingSubmitted({
             storeId: store.id,
             rating: ratingValue,
-            comment: comment.trim()
+            comment: comment.trim(),
+            storeAverageRating: returnedRating?.storeAverageRating,
+            storeRatingCount: returnedRating?.storeRatingCount
           });
         }
         onClose();
       }, 700);
     } catch (err) {
-      setError(err.message || 'Failed to submit rating. Please try again.');
+      setError(err.message || 'Failed to process rating. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -96,7 +99,7 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
     }}>
       <div className="glass-card" style={{
         width: '100%',
-        maxWidth: '500px',
+        maxWidth: '520px',
         position: 'relative',
         boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)'
       }}>
@@ -115,7 +118,7 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
             </div>
             <div>
               <h2 style={{ fontSize: '1.25rem', margin: 0 }}>
-                {isEditing ? 'Modify Your Rating' : 'Rate This Store'}
+                {isEditing ? 'Modify Your Rating' : 'Submit Store Rating'}
               </h2>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-subtle)', margin: 0 }}>
                 {store.name}
@@ -134,7 +137,7 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
         {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
         {success && <Alert type="success" message={success} />}
 
-        {/* Store Summary Banner */}
+        {/* Store Summary Card */}
         <div style={{
           background: 'rgba(15, 23, 42, 0.6)',
           border: '1px solid var(--border-color)',
@@ -143,14 +146,16 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
           marginBottom: '1.25rem',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem'
         }}>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>STORE LOCATION</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>STORE LOCATION</div>
             <div style={{ fontSize: '0.85rem', color: '#f8fafc', fontWeight: 500 }}>{store.address}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>COMMUNITY RATING</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>OVERALL RATING</div>
             <div style={{ fontSize: '0.9rem', color: '#fbbf24', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
               <Star size={13} fill="#fbbf24" />
               {Number(store.averageRating || store.overall_rating || 0).toFixed(1)} / 5.0
@@ -160,12 +165,18 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Interactive Star Picker */}
-          <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(245, 158, 11, 0.05)', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-            <label className="form-label" style={{ fontSize: '0.85rem', marginBottom: '0.6rem', color: 'var(--text-color)' }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '1.25rem',
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
+            borderRadius: '10px',
+            border: '1px solid rgba(245, 158, 11, 0.25)'
+          }}>
+            <label className="form-label" style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-color)' }}>
               Select Your Rating (1 to 5 Stars)
             </label>
 
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
               {[1, 2, 3, 4, 5].map((star) => {
                 const isActive = (hoverRating || ratingValue) >= star;
                 return (
@@ -175,20 +186,22 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
                     onClick={() => setRatingValue(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
+                    disabled={loading}
+                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
                     style={{
                       background: 'none',
                       border: 'none',
-                      cursor: 'pointer',
+                      cursor: loading ? 'not-allowed' : 'pointer',
                       padding: '4px',
-                      transform: isActive ? 'scale(1.15)' : 'scale(1)',
+                      transform: isActive ? 'scale(1.2)' : 'scale(1)',
                       transition: 'transform 0.15s ease'
                     }}
                   >
                     <Star
-                      size={32}
+                      size={36}
                       color="#fbbf24"
                       fill={isActive ? '#fbbf24' : 'transparent'}
-                      style={{ filter: isActive ? 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.5))' : 'none' }}
+                      style={{ filter: isActive ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.6))' : 'none' }}
                     />
                   </button>
                 );
@@ -212,6 +225,7 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={400}
+              disabled={loading}
               style={{ resize: 'vertical' }}
             />
           </div>
@@ -221,7 +235,7 @@ export const RateStoreModal = ({ store, isOpen, onClose, onRatingSubmitted }) =>
             <Button variant="secondary" type="button" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" loading={loading} icon={Check}>
+            <Button variant="primary" type="submit" loading={loading} disabled={loading} icon={Check}>
               {isEditing ? 'Update Rating' : 'Submit Rating'}
             </Button>
           </div>
