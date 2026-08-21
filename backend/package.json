@@ -1,11 +1,12 @@
 {
   "name": "store-rating-backend",
   "version": "1.0.0",
-  "description": "Express.js backend for Store Rating web application",
+  "description": "Scalable 3-tier Express.js backend for Store Rating web application",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test": "node test/api.test.js",
     "db:migrate": "node src/database/migrate.js",
     "db:seed": "node src/database/seed.js"
   },
@@ -27,8 +28,9 @@
     "express",
     "postgresql",
     "jwt",
-    "auth",
-    "api"
+    "rbac",
+    "api",
+    "scalable-architecture"
   ],
   "author": "",
   "license": "ISC"
