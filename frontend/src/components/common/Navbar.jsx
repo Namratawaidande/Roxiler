@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Star, Store, User, LogOut, LogIn, UserPlus, Shield, ShoppingBag, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
+import { Button } from './Button';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout, isAdmin, isStoreOwner, isNormalUser } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const getRoleBadge = (role) => {
@@ -175,41 +177,45 @@ export const Navbar = () => {
                     {user?.name?.split(' ')[0] || user?.email}
                   </span>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="btn btn-secondary btn-sm"
                   title="Change Password"
-                  style={{ padding: '0.35rem 0.65rem' }}
-                >
-                  <KeyRound size={14} />
-                </button>
-                <button
-                  type="button"
+                  icon={KeyRound}
+                  radius={8}
+                  style={{ padding: '0.4rem 0.6rem' }}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={logout}
-                  className="btn btn-secondary btn-sm"
                   title="Logout"
-                  style={{ padding: '0.35rem 0.65rem' }}
-                >
-                  <LogOut size={14} />
-                </button>
+                  icon={LogOut}
+                  radius={8}
+                  style={{ padding: '0.4rem 0.6rem' }}
+                />
               </div>
             </>
           ) : (
             /* Unauthenticated Navigation: Clean Login & Register only */
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Link
-                to="/login"
-                className={`btn btn-sm ${location.pathname === '/login' || location.pathname === '/' ? 'btn-primary' : 'btn-secondary'}`}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <Button
+                variant={location.pathname === '/login' || location.pathname === '/' ? 'primary' : 'secondary'}
+                size="sm"
+                icon={LogIn}
+                onClick={() => navigate('/login')}
               >
-                <LogIn size={14} /> Login
-              </Link>
-              <Link
-                to="/register"
-                className={`btn btn-sm ${location.pathname === '/register' ? 'btn-primary' : 'btn-secondary'}`}
+                Login
+              </Button>
+              <Button
+                variant={location.pathname === '/register' ? 'primary' : 'secondary'}
+                size="sm"
+                icon={UserPlus}
+                onClick={() => navigate('/register')}
               >
-                <UserPlus size={14} /> Register
-              </Link>
+                Register
+              </Button>
             </div>
           )}
         </nav>

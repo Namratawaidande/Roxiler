@@ -1,57 +1,41 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { SpecularButton } from './SpecularButton';
 
 /**
- * Reusable Button Component with loading state and styling variants
+ * Reusable Button Component powered by React Bits SpecularButton
+ * Preserves all existing functionality, event handlers, and role-based actions
  */
 export const Button = ({
   children,
+  variant = 'primary',
+  size = 'md',
   type = 'button',
-  variant = 'primary', // 'primary' | 'secondary' | 'danger' | 'outline'
-  size = 'md', // 'sm' | 'md' | 'lg'
   loading = false,
   disabled = false,
   onClick,
-  icon: Icon,
+  icon,
   className = '',
   style = {},
+  radius = 12,
   ...props
 }) => {
-  const sizeStyles = {
-    sm: { padding: '0.4rem 0.8rem', fontSize: '0.8rem' },
-    md: { padding: '0.65rem 1.25rem', fontSize: '0.9rem' },
-    lg: { padding: '0.85rem 1.75rem', fontSize: '1rem' }
-  };
-
   return (
-    <button
+    <SpecularButton
+      variant={variant}
+      size={size}
       type={type}
+      loading={loading}
+      disabled={disabled}
       onClick={onClick}
-      disabled={disabled || loading}
-      className={`btn btn-${variant} ${className}`}
-      style={{
-        ...sizeStyles[size],
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.5rem',
-        opacity: disabled || loading ? 0.65 : 1,
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        ...style
-      }}
+      icon={icon}
+      className={className}
+      style={style}
+      radius={radius}
       {...props}
     >
-      {loading ? (
-        <>
-          <Loader2 size={16} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Loading...</span>
-        </>
-      ) : (
-        <>
-          {Icon && <Icon size={size === 'sm' ? 14 : 16} />}
-          <span>{children}</span>
-        </>
-      )}
-    </button>
+      {children}
+    </SpecularButton>
   );
 };
+
+export default Button;

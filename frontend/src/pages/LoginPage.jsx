@@ -148,38 +148,46 @@ export const LoginPage = () => {
             <Sparkles size={12} color="#f59e0b" /> Fast Role Auto-Fill:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              icon={Shield}
               onClick={() => fillQuickDemo('SYSTEM_ADMIN')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
+              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
             >
-              <Shield size={12} color="#818cf8" /> Admin (System Admin)
-            </button>
-            <button
+              Admin (System Admin)
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              icon={Store}
               onClick={() => fillQuickDemo('STORE_OWNER_1')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
+              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
             >
-              <Store size={12} color="#06b6d4" /> Owner (Alice Storekeeper)
-            </button>
-            <button
+              Owner (Alice Storekeeper)
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              icon={Store}
               onClick={() => fillQuickDemo('STORE_OWNER_2')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
+              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
             >
-              <Store size={12} color="#06b6d4" /> Owner (Marcus Vance)
-            </button>
-            <button
+              Owner (Marcus Vance)
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
+              icon={User}
               onClick={() => fillQuickDemo('NORMAL_USER')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
+              style={{ fontSize: '0.75rem', justifyContent: 'flex-start', padding: '6px 10px' }}
             >
-              <User size={12} color="#10b981" /> User (John Doe)
-            </button>
+              User (John Doe)
+            </Button>
           </div>
         </div>
 
