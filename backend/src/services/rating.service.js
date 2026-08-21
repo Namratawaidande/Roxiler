@@ -68,8 +68,9 @@ class RatingService {
     }
 
     // Mock Fallback
-    const validStoreIds = [1, 2, 3];
-    if (!validStoreIds.includes(numericStoreId)) {
+    const storeService = require('./store.service');
+    const store = (storeService.mockStoresList || []).find((s) => s.id === numericStoreId);
+    if (!store) {
       throw new NotFoundError(`Store with ID ${numericStoreId} not found.`);
     }
 
@@ -166,8 +167,9 @@ class RatingService {
     }
 
     // Mock Fallback
-    const validStoreIds = [1, 2, 3];
-    if (!validStoreIds.includes(numericStoreId)) {
+    const storeService = require('./store.service');
+    const store = (storeService.mockStoresList || []).find((s) => s.id === numericStoreId);
+    if (!store) {
       throw new NotFoundError(`Store with ID ${numericStoreId} not found.`);
     }
 

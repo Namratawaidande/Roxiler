@@ -16,7 +16,7 @@ const getStores = asyncHandler(async (req, res) => {
  * GET /api/v1/stores/:id
  */
 const getStoreById = asyncHandler(async (req, res) => {
-  const store = await storeService.getStoreById(req.params.id);
+  const store = await storeService.getStoreById(req.params.id, req.user?.id);
   return ApiResponse.success(res, { store }, 'Store details retrieved successfully.');
 });
 

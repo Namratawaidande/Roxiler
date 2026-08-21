@@ -295,12 +295,23 @@ class StoreService {
       throw new NotFoundError(`Store with ID ${id} not found.`);
     }
 
-    const userRatingEntry = numericUserId ? mockUserRatings[`${store.id}_${numericUserId}`] : null;
+    const ratingService = require('./rating.service');
+    const ratingsList = ratingService.mockRatingsCollection || [];
+    const userRatingEntry = numericUserId
+      ? ratingsList.find((r) => r.store_id === store.id && r.user_id === numericUserId)
+      : null;
+
+    const storeRatings = ratingsList.filter((r) => r.store_id === store.id);
+    const avg = storeRatings.length > 0
+      ? Math.round((storeRatings.reduce((acc, curr) => acc + curr.rating_value, 0) / storeRatings.length) * 10) / 10
+      : (store.averageRating || 0.0);
 
     return {
       ...store,
-      myRating: userRatingEntry ? userRatingEntry.rating : null,
-      userSubmittedRating: userRatingEntry ? userRatingEntry.rating : null,
+      averageRating: avg,
+      overall_rating: avg,
+      myRating: userRatingEntry ? userRatingEntry.rating_value : null,
+      userSubmittedRating: userRatingEntry ? userRatingEntry.rating_value : null,
       myComment: userRatingEntry ? userRatingEntry.comment : null
     };
   }
@@ -460,4 +471,7 @@ class StoreService {
   }
 }
 
-module.exports = new StoreService();
+const storeService = new StoreService();
+storeService.mockStoresList = mockStoresList;
+
+module.exports = storeService;

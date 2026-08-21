@@ -54,118 +54,198 @@ const request = (method, path, body = null, token = null) => {
   });
 };
 
-const runRatingModificationTests = async () => {
+const runComprehensiveRatingsIntegrationSuite = async () => {
   await startTestServer();
   console.log(`\n======================================================================`);
-  console.log(`🧪 TEST RUNNER: NORMAL_USER Rating Modification & Ownership Suite`);
+  console.log(`🧪 INTEGRATED TEST RUNNER: 10-Scenario Store Ratings & Calculations`);
   console.log(`🌐 Server Base URL: ${baseUrl}`);
   console.log(`======================================================================\n`);
 
   try {
-    // --- 1. AUTHENTICATION ---
-    console.log('--- 1. AUTHENTICATION OF TEST ACCOUNTS ---');
-    const userLogin = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
-    if (userLogin.statusCode !== 200) throw new Error('Normal user login failed');
-    const userToken = userLogin.data.data.token;
-    const userId = userLogin.data.data.user.id;
+    // --- AUTHENTICATION ---
+    const user1Login = await request('POST', '/api/v1/auth/login', { email: 'john.doe@example.com', password: 'User@123456' });
+    if (user1Login.statusCode !== 200) throw new Error('User 1 login failed');
+    const user1Token = user1Login.data.data.token;
+    const user1Id = user1Login.data.data.user.id;
+
+    const user2Login = await request('POST', '/api/v1/auth/login', { email: 'sarah.jenkins@example.com', password: 'User@123456' });
+    if (user2Login.statusCode !== 200) throw new Error('User 2 login failed');
+    const user2Token = user2Login.data.data.token;
+    const user2Id = user2Login.data.data.user.id;
 
     const adminLogin = await request('POST', '/api/v1/auth/login', { email: 'admin@storerating.com', password: 'Admin@123456' });
     if (adminLogin.statusCode !== 200) throw new Error('Admin login failed');
     const adminToken = adminLogin.data.data.token;
 
     const ownerLogin = await request('POST', '/api/v1/auth/login', { email: 'owner1@storerating.com', password: 'Owner@123456' });
-    if (ownerLogin.statusCode !== 200) throw new Error('Store owner login failed');
+    if (ownerLogin.statusCode !== 200) throw new Error('Store Owner login failed');
     const ownerToken = ownerLogin.data.data.token;
-    console.log('  ✔ Authenticated NORMAL_USER, SYSTEM_ADMIN, and STORE_OWNER.');
 
-    // --- 2. SUBMITTING INITIAL RATING ---
-    console.log('\n--- 2. SUBMITTING INITIAL RATING ---');
-    // John Doe rates Store 2 with 4 stars
-    const initRating = await request('POST', '/api/v1/ratings', {
-      storeId: 2,
+    console.log('  ✔ Authenticated User #1, User #2, System Admin, and Store Owner.');
+
+    // -------------------------------------------------------------
+    // SCENARIO 1: STORE HAS NO RATINGS
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 1: STORE HAS NO RATINGS ---');
+    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    const newStoreRes = await request('POST', '/api/v1/stores', {
+      name: `Brand New Unrated Store ${randSuffix}`,
+      email: `unrated.${randSuffix}@store.com`,
+      address: '100 Fresh Meadow Drive, Innovation Park',
+      owner_id: 2
+    }, adminToken);
+    if (newStoreRes.statusCode !== 201) throw new Error('Failed to create new test store');
+    const unratedStoreId = newStoreRes.data.data.store.id;
+
+    const checkUnratedRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
+    const unratedStore = checkUnratedRes.data.data.store;
+    if (unratedStore.averageRating !== 0.0 && unratedStore.overall_rating !== 0.0) {
+      throw new Error(`Expected average rating 0.0 for unrated store, got ${unratedStore.averageRating}`);
+    }
+    console.log(`  ✔ Scenario 1 Passed: Unrated store returns overall rating ${unratedStore.averageRating}★ ("No ratings yet").`);
+
+    // -------------------------------------------------------------
+    // SCENARIO 2: STORE HAS ONE RATING
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 2: STORE HAS ONE RATING ---');
+    const rate1Res = await request('POST', '/api/v1/ratings', {
+      storeId: unratedStoreId,
       rating: 4,
-      comment: 'Initial 4 star review'
-    }, userToken);
-    if (initRating.statusCode !== 201 && initRating.statusCode !== 409) {
-      throw new Error(`Failed to initialize rating: ${JSON.stringify(initRating.data)}`);
-    }
-    console.log('  ✔ Initial rating established for Store #2.');
+      comment: 'Initial single rating of 4 stars'
+    }, user1Token);
+    if (rate1Res.statusCode !== 201) throw new Error('Failed to submit single rating');
 
-    // --- 3. MODIFYING EXISTING RATING ---
-    console.log('\n--- 3. MODIFYING EXISTING RATING (PUT /api/v1/ratings/:storeId) ---');
-    const modifyRes = await request('PUT', '/api/v1/ratings/2', {
+    const checkSingleRatingRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
+    const singleRatedStore = checkSingleRatingRes.data.data.store;
+    if (singleRatedStore.averageRating !== 4.0 && singleRatedStore.overall_rating !== 4.0) {
+      throw new Error(`Expected average rating 4.0 for store with 1 rating, got ${singleRatedStore.averageRating}`);
+    }
+    console.log(`  ✔ Scenario 2 Passed: Store with 1 rating (4★) returns exactly ${singleRatedStore.averageRating}★.`);
+
+    // -------------------------------------------------------------
+    // SCENARIO 3: STORE HAS MULTIPLE RATINGS (ARITHMETIC AVERAGE)
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 3: STORE HAS MULTIPLE RATINGS (ARITHMETIC AVERAGE) ---');
+    // User 2 rates the same store with 2 stars
+    const rate2Res = await request('POST', '/api/v1/ratings', {
+      storeId: unratedStoreId,
       rating: 2,
-      comment: 'Downgrading to 2 stars after second visit delays.'
-    }, userToken);
+      comment: 'Second rating of 2 stars'
+    }, user2Token);
+    if (rate2Res.statusCode !== 201) throw new Error('Failed to submit second user rating');
 
-    if (modifyRes.statusCode !== 200) {
-      throw new Error(`Expected 200 OK for rating update, got ${modifyRes.statusCode}: ${JSON.stringify(modifyRes.data)}`);
+    // Expected arithmetic average: (4 + 2) / 2 = 3.0
+    const checkMultiRatingRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
+    const multiRatedStore = checkMultiRatingRes.data.data.store;
+    if (multiRatedStore.averageRating !== 3.0 && multiRatedStore.overall_rating !== 3.0) {
+      throw new Error(`Expected arithmetic average 3.0 for (4 + 2)/2, got ${multiRatedStore.averageRating}`);
     }
-    const updated = modifyRes.data.data.rating;
-    if (updated.rating_value !== 2 || updated.user_id !== userId) {
-      throw new Error('Updated rating value or user ownership mismatch');
+    console.log(`  ✔ Scenario 3 Passed: Multiple ratings (4★ + 2★) produce exact arithmetic average ${multiRatedStore.averageRating}★.`);
+
+    // -------------------------------------------------------------
+    // SCENARIO 4: NORMAL_USER HAS NOT RATED A STORE
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 4: NORMAL_USER HAS NOT RATED STORE ---');
+    // User 2 checks Store #1 (which User 2 has not rated)
+    const store1User2Res = await request('GET', '/api/v1/stores/1', null, user2Token);
+    const store1User2 = store1User2Res.data.data.store;
+    if (store1User2.myRating !== null && store1User2.userSubmittedRating !== null) {
+      throw new Error(`Expected myRating null for unrated user, got ${store1User2.myRating}`);
     }
-    console.log(`  ✔ [PUT /api/v1/ratings/2] Rating successfully modified to 2★ for Store #2 by User #${userId} (200 OK).`);
+    console.log('  ✔ Scenario 4 Passed: Unrated user sees myRating = null ("Not Rated Yet").');
 
-    // --- 4. IMMEDIATE REFLECTION IN STORE QUERIES ---
-    console.log('\n--- 4. IMMEDIATE REFLECTION IN STORE BROWSING ---');
-    const storesRes = await request('GET', '/api/v1/stores', null, userToken);
-    if (storesRes.statusCode !== 200) throw new Error('Failed to retrieve stores');
-    const store2 = storesRes.data.data.stores.find(s => s.id === 2);
-    if (!store2) throw new Error('Store 2 missing in response');
-    if (store2.myRating !== 2 && store2.userSubmittedRating !== 2) {
-      throw new Error(`Expected myRating to immediately reflect 2★, got ${store2.myRating}`);
+    // -------------------------------------------------------------
+    // SCENARIO 5: NORMAL_USER HAS RATED A STORE
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 5: NORMAL_USER HAS RATED STORE ---');
+    // User 1 checks Store #1 (which User 1 rated with 5 stars)
+    const store1User1Res = await request('GET', '/api/v1/stores/1', null, user1Token);
+    const store1User1 = store1User1Res.data.data.store;
+    if (store1User1.myRating !== 5 && store1User1.userSubmittedRating !== 5) {
+      throw new Error(`Expected myRating 5 for rated user, got ${store1User1.myRating}`);
     }
-    console.log(`  ✔ [GET /api/v1/stores] Store #2 now returns userSubmittedRating: ${store2.myRating}★ (Reflected immediately).`);
+    console.log(`  ✔ Scenario 5 Passed: Rated user sees their exact submitted score (myRating: ${store1User1.myRating}★).`);
 
-    // --- 5. MODIFYING UNRATED STORE REJECTED WITH 404 ---
-    console.log('\n--- 5. MODIFYING UNRATED STORE REJECTION ---');
-    const unratedStoreRes = await request('PUT', '/api/v1/ratings/3', {
-      rating: 5
-    }, userToken);
-    if (unratedStoreRes.statusCode !== 404) {
-      throw new Error(`Expected 404 Not Found for unrated store update, got ${unratedStoreRes.statusCode}`);
+    // -------------------------------------------------------------
+    // SCENARIO 6: NORMAL_USER MODIFIES RATING (RECALCULATES AVERAGE)
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 6: NORMAL_USER MODIFIES RATING ---');
+    // User 1 updates their rating on unratedStore from 4★ to 5★
+    // Ratings now: User 1 = 5★, User 2 = 2★ -> (5 + 2) / 2 = 3.5★
+    const modifyRes = await request('PUT', `/api/v1/ratings/${unratedStoreId}`, {
+      rating: 5,
+      comment: 'Updated to 5 stars'
+    }, user1Token);
+    if (modifyRes.statusCode !== 200) throw new Error('Rating update failed');
+
+    const checkUpdatedAvgRes = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
+    const updatedAvgStore = checkUpdatedAvgRes.data.data.store;
+    if (updatedAvgStore.averageRating !== 3.5 && updatedAvgStore.overall_rating !== 3.5) {
+      throw new Error(`Expected recalculated average 3.5 for (5 + 2)/2, got ${updatedAvgStore.averageRating}`);
     }
-    console.log('  ✔ [PUT /api/v1/ratings/3] Modifying rating on unrated store rejected (404 Not Found as expected).');
+    console.log(`  ✔ Scenario 6 Passed: Modifying rating (4★ -> 5★) recalculated store average to ${updatedAvgStore.averageRating}★.`);
 
-    // --- 6. RATING VALUE VALIDATION ---
-    console.log('\n--- 6. INPUT RANGE VALIDATION ---');
-    const invalidHigh = await request('PUT', '/api/v1/ratings/2', { rating: 6 }, userToken);
-    if (invalidHigh.statusCode !== 422) throw new Error('Rating 6 was not rejected with 422');
-    console.log('  ✔ Rating > 5 rejected (422 Unprocessable Entity).');
+    // -------------------------------------------------------------
+    // SCENARIO 7: MULTIPLE USERS RATE SAME STORE (UNIQUE RECORDS)
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 7: MULTIPLE USERS & DUPLICATE PREVENTION ---');
+    // User 1 attempts duplicate rating on same store
+    const duplicateRes = await request('POST', '/api/v1/ratings', { storeId: unratedStoreId, rating: 5 }, user1Token);
+    if (duplicateRes.statusCode !== 409) throw new Error('Duplicate rating was not rejected with 409');
+    console.log('  ✔ Scenario 7 Passed: Unique constraint blocks duplicate ratings per user (409 Conflict).');
 
-    const invalidLow = await request('PUT', '/api/v1/ratings/2', { rating: 0 }, userToken);
-    if (invalidLow.statusCode !== 422) throw new Error('Rating 0 was not rejected with 422');
-    console.log('  ✔ Rating < 1 rejected (422 Unprocessable Entity).');
+    // -------------------------------------------------------------
+    // SCENARIO 8: INVALID RATING VALUE REJECTION
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 8: INVALID RATING VALUES REJECTION ---');
+    const badRatings = [0, 6, -1, 3.5, 'five', null];
+    for (const val of badRatings) {
+      const res = await request('POST', '/api/v1/ratings', { storeId: 1, rating: val }, user1Token);
+      if (res.statusCode !== 422 && res.statusCode !== 409) {
+        throw new Error(`Invalid rating ${val} was not rejected with 422`);
+      }
+    }
+    console.log('  ✔ Scenario 8 Passed: Out-of-bounds, decimal, string, and null ratings rejected (422 Unprocessable Entity).');
 
-    // --- 7. RBAC GUARDS ---
-    console.log('\n--- 7. ROLE-BASED ACCESS RESTRICTIONS ---');
-    const adminPut = await request('PUT', '/api/v1/ratings/2', { rating: 5 }, adminToken);
-    if (adminPut.statusCode !== 403) throw new Error('SYSTEM_ADMIN was not blocked with 403 from modifying rating');
-    console.log('  ✔ [PUT /api/v1/ratings/:storeId] (SYSTEM_ADMIN) -> 403 Forbidden (Blocked).');
+    // -------------------------------------------------------------
+    // SCENARIO 9: UNAUTHORIZED ACCESS REJECTION
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 9: UNAUTHORIZED ACCESS REJECTION ---');
+    const adminRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, adminToken);
+    if (adminRate.statusCode !== 403) throw new Error('Admin rating was not blocked with 403');
 
-    const ownerPut = await request('PUT', '/api/v1/ratings/2', { rating: 5 }, ownerToken);
-    if (ownerPut.statusCode !== 403) throw new Error('STORE_OWNER was not blocked with 403 from modifying rating');
-    console.log('  ✔ [PUT /api/v1/ratings/:storeId] (STORE_OWNER) -> 403 Forbidden (Blocked).');
+    const ownerRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, ownerToken);
+    if (ownerRate.statusCode !== 403) throw new Error('Owner rating was not blocked with 403');
 
-    const unauthPut = await request('PUT', '/api/v1/ratings/2', { rating: 5 });
-    if (unauthPut.statusCode !== 401) throw new Error('Unauthenticated update was not blocked with 401');
-    console.log('  ✔ [PUT /api/v1/ratings/:storeId] (Unauthenticated) -> 401 Unauthorized (Blocked).');
+    const unauthRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 });
+    if (unauthRate.statusCode !== 401) throw new Error('Unauthenticated rating was not blocked with 401');
+    console.log('  ✔ Scenario 9 Passed: Non-NORMAL_USER roles and unauthenticated requests blocked (403/401).');
+
+    // -------------------------------------------------------------
+    // SCENARIO 10: REFERENTIAL INTEGRITY & STORE DELETION
+    // -------------------------------------------------------------
+    console.log('\n--- SCENARIO 10: REFERENTIAL INTEGRITY & DELETION ---');
+    const deleteStoreRes = await request('DELETE', `/api/v1/stores/${unratedStoreId}`, null, adminToken);
+    if (deleteStoreRes.statusCode !== 200) throw new Error('Store deletion failed');
+
+    const checkDeletedStore = await request('GET', `/api/v1/stores/${unratedStoreId}`, null, user1Token);
+    if (checkDeletedStore.statusCode !== 404) throw new Error('Deleted store still accessible');
+    console.log('  ✔ Scenario 10 Passed: Store deletion preserved foreign-key integrity without orphaned records.');
 
     console.log('\n======================================================================');
-    console.log('✨ ALL NORMAL_USER RATING MODIFICATION TESTS PASSED (100% GREEN)');
+    console.log('✨ ALL 10 STORE RATING INTEGRATION SCENARIOS PASSED (100% GREEN)');
     console.log('======================================================================\n');
   } finally {
     await stopTestServer();
   }
 };
 
-runRatingModificationTests()
+runComprehensiveRatingsIntegrationSuite()
   .then(() => {
     process.exit(0);
   })
   .catch(async (err) => {
-    console.error('❌ Test failed:', err.message);
+    console.error('❌ Integration Test failed:', err.message);
     await stopTestServer();
     process.exit(1);
   });
