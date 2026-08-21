@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { HomePage } from '../pages/HomePage';
 import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
-import { StoresPage } from '../pages/StoresPage';
+import { StoreListPage } from '../pages/StoreListPage';
 import { DashboardPreviewPage } from '../pages/DashboardPreviewPage';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { AdminUsersPage } from '../pages/AdminUsersPage';
@@ -20,8 +20,17 @@ export const AppRoutes = () => {
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/stores" element={<StoresPage />} />
       <Route path="/dashboard-preview" element={<DashboardPreviewPage />} />
+
+      {/* Authenticated Stores Route */}
+      <Route
+        path="/stores"
+        element={
+          <ProtectedRoute>
+            <StoreListPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Role-Protected Routes */}
       <Route
@@ -64,7 +73,7 @@ export const AppRoutes = () => {
         path="/user"
         element={
           <ProtectedRoute allowedRoles={['NORMAL_USER']}>
-            <NormalUserDashboardPage />
+            <StoreListPage />
           </ProtectedRoute>
         }
       />
