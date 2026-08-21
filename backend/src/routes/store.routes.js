@@ -25,12 +25,12 @@ router.get('/:id', authenticate, validate(storeIdParamValidator), getStoreById);
 /**
  * @route   POST /api/v1/stores
  * @desc    Create new store
- * @access  Private (SYSTEM_ADMIN, STORE_OWNER)
+ * @access  Private (SYSTEM_ADMIN only)
  */
 router.post(
   '/',
   authenticate,
-  authorize(ROLES.SYSTEM_ADMIN, ROLES.STORE_OWNER),
+  authorize(ROLES.SYSTEM_ADMIN),
   validate(createStoreValidator),
   createStore
 );

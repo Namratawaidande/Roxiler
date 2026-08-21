@@ -125,7 +125,7 @@ const runComprehensiveBackendTestSuite = async () => {
     assert(logoutRes.statusCode === 200, 'Logout endpoint returns 200 OK acknowledgment');
 
     // =============================================================
-    // SUITE 2: AUTHORIZATION & CROSS-ROLE BARRIERS
+    // SUITE 2: AUTHORIZATION & CROSS-ROLE BARRIERS (RBAC & IDOR)
     // =============================================================
     console.log('\n📦 [SUITE 2/6] ROLE-BASED ACCESS CONTROL & PRIVILEGE BARRIERS');
 
@@ -133,29 +133,71 @@ const runComprehensiveBackendTestSuite = async () => {
     const adminDash = await request('GET', '/api/v1/dashboard/admin', null, adminToken);
     assert(adminDash.statusCode === 200, 'SYSTEM_ADMIN granted access to Admin Dashboard (200 OK)');
 
-    // 2.2 NORMAL_USER Privilege Escalation Blocked
+    const adminUsers = await request('GET', '/api/v1/users', null, adminToken);
+    assert(adminUsers.statusCode === 200, 'SYSTEM_ADMIN granted access to Users Management API (200 OK)');
+
+    // 2.2 NORMAL_USER Vertical Privilege Escalation Blocked
     const userToAdmin = await request('GET', '/api/v1/dashboard/admin', null, userToken);
     assert(userToAdmin.statusCode === 403, 'NORMAL_USER blocked from Admin Dashboard (403 Forbidden)');
 
-    const userToUsers = await request('POST', '/api/v1/users', { name: 'Escalation Attempt 1234', email: 'esc@user.com', password: 'UserPass@2026', address: '123 Test St', role: 'SYSTEM_ADMIN' }, userToken);
-    assert(userToUsers.statusCode === 403, 'NORMAL_USER blocked from User Management API (403 Forbidden)');
+    const userToUsersList = await request('GET', '/api/v1/users', null, userToken);
+    assert(userToUsersList.statusCode === 403, 'NORMAL_USER blocked from listing users (403 Forbidden)');
 
-    const userToOwner = await request('GET', '/api/v1/dashboard/owner', null, userToken);
-    assert(userToOwner.statusCode === 403, 'NORMAL_USER blocked from Store Owner Dashboard (403 Forbidden)');
+    const userToUserById = await request('GET', '/api/v1/users/1', null, userToken);
+    assert(userToUserById.statusCode === 403, 'NORMAL_USER blocked from accessing user details by ID (403 Forbidden)');
 
-    // 2.3 STORE_OWNER Privilege Escalation Blocked
+    const userToCreateUser = await request('POST', '/api/v1/users', { name: 'Escalation Attempt 1234', email: 'esc@user.com', password: 'UserPass@2026', address: '123 Test St', role: 'SYSTEM_ADMIN' }, userToken);
+    assert(userToCreateUser.statusCode === 403, 'NORMAL_USER blocked from User Management API (403 Forbidden)');
+
+    const userToCreateStore = await request('POST', '/api/v1/stores', { name: 'Unauthorized Store 1234', email: 'unauth@store.com', address: '123 Test St', owner_id: 2 }, userToken);
+    assert(userToCreateStore.statusCode === 403, 'NORMAL_USER blocked from creating stores (403 Forbidden)');
+
+    const userToOwnerDash = await request('GET', '/api/v1/dashboard/owner', null, userToken);
+    assert(userToOwnerDash.statusCode === 403, 'NORMAL_USER blocked from Store Owner Dashboard (403 Forbidden)');
+
+    const userToOwnerRatings = await request('GET', '/api/v1/ratings/owner', null, userToken);
+    assert(userToOwnerRatings.statusCode === 403, 'NORMAL_USER blocked from Store Owner Ratings API (403 Forbidden)');
+
+    const userToOwnerStats = await request('GET', '/api/v1/ratings/owner/stats', null, userToken);
+    assert(userToOwnerStats.statusCode === 403, 'NORMAL_USER blocked from Store Owner Stats API (403 Forbidden)');
+
+    // 2.3 STORE_OWNER Vertical Privilege Escalation Blocked
     const ownerToAdmin = await request('GET', '/api/v1/dashboard/admin', null, owner1Token);
     assert(ownerToAdmin.statusCode === 403, 'STORE_OWNER blocked from Admin Dashboard (403 Forbidden)');
+
+    const ownerToUsersList = await request('GET', '/api/v1/users', null, owner1Token);
+    assert(ownerToUsersList.statusCode === 403, 'STORE_OWNER blocked from Users Management API (403 Forbidden)');
+
+    const ownerToCreateUser = await request('POST', '/api/v1/users', { name: 'Owner Create Admin 123', email: 'owner.adm@test.com', password: 'UserPass@2026', address: '123 Test St', role: 'SYSTEM_ADMIN' }, owner1Token);
+    assert(ownerToCreateUser.statusCode === 403, 'STORE_OWNER blocked from creating users (403 Forbidden)');
+
+    const ownerToCreateStore = await request('POST', '/api/v1/stores', { name: 'Owner Create Store 123', email: 'owner.st@test.com', address: '123 Test St', owner_id: 2 }, owner1Token);
+    assert(ownerToCreateStore.statusCode === 403, 'STORE_OWNER blocked from creating stores (403 Forbidden)');
 
     const ownerRate = await request('POST', '/api/v1/ratings', { storeId: 1, rating: 5 }, owner1Token);
     assert(ownerRate.statusCode === 403, 'STORE_OWNER blocked from submitting store ratings (403 Forbidden)');
 
-    // 2.4 Cross-Store Owner Data Isolation
+    const ownerModRate = await request('PUT', '/api/v1/ratings/1', { rating: 5 }, owner1Token);
+    assert(ownerModRate.statusCode === 403, 'STORE_OWNER blocked from modifying store ratings (403 Forbidden)');
+
+    // 2.4 Horizontal Privilege Escalation & IDOR / BOLA Defenses
+    const owner2UpdateStore1 = await request('PUT', '/api/v1/stores/1', { name: 'Hacked Store 1 By Owner 2' }, owner2Token);
+    assert(owner2UpdateStore1.statusCode === 403, 'IDOR Defense: Store Owner 2 blocked from updating Store Owner 1 store (403 Forbidden)');
+
+    const owner2DeleteStore1 = await request('DELETE', '/api/v1/stores/1', null, owner2Token);
+    assert(owner2DeleteStore1.statusCode === 403, 'IDOR Defense: Store Owner 2 blocked from deleting Store Owner 1 store (403 Forbidden)');
+
     const owner2Stats = await request('GET', '/api/v1/ratings/owner/stats', null, owner2Token);
     assert(owner2Stats.statusCode === 200, 'STORE_OWNER #2 accessed own rating statistics');
     const owner2Stores = owner2Stats.data.data.stores;
     const hasLeak = owner2Stores.some((s) => s.name.includes('Apex Digital'));
-    assert(!hasLeak, 'Cross-Store Isolation: Store Owner 2 cannot see Store Owner 1 store data');
+    assert(!hasLeak, 'Cross-Store Isolation: Store Owner 2 cannot see Store Owner 1 store stats');
+
+    const owner2Ratings = await request('GET', '/api/v1/ratings/owner', null, owner2Token);
+    assert(owner2Ratings.statusCode === 200, 'STORE_OWNER #2 accessed own customer ratings');
+    const owner2RatingList = owner2Ratings.data.data.ratings;
+    const hasStore1Rating = owner2RatingList.some((r) => r.storeId === 1 || r.storeName?.includes('Apex Digital'));
+    assert(!hasStore1Rating, 'Cross-Store Isolation: Store Owner 2 customer review stream strictly quarantined');
 
     // =============================================================
     // SUITE 3: USER MANAGEMENT & VALIDATION CONSTRAINTS
