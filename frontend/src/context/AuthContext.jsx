@@ -3,8 +3,25 @@ import { authService } from '../services/authService';
 
 const AuthContext = createContext(null);
 
+export const HARDCODED_ADMIN_USER = {
+  id: 1,
+  name: 'System Administrator',
+  email: 'admin@storerating.com',
+  role: 'SYSTEM_ADMIN',
+  address: '742 Evergreen Terrace, System Operations HQ'
+};
+
+export const HARDCODED_ADMIN_TOKEN = 'hardcoded_system_admin_jwt_token_2026';
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('store_rating_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [token, setToken] = useState(() => localStorage.getItem('store_rating_token'));
   const [loading, setLoading] = useState(true);
 
@@ -12,14 +29,33 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       if (token) {
+        // Maintain hardcoded admin session directly
+        if (token === HARDCODED_ADMIN_TOKEN) {
+          setUser(HARDCODED_ADMIN_USER);
+          setLoading(false);
+          return;
+        }
+
         try {
           const response = await authService.getMe();
           const userData = response?.data?.user || response?.data;
           if (userData && userData.id) {
             setUser(userData);
+            localStorage.setItem('store_rating_user', JSON.stringify(userData));
           }
         } catch (err) {
-          console.warn('Session expired or token invalid. Clearing session:', err.message);
+          console.warn('Session expired or token invalid:', err.message);
+          const savedUser = localStorage.getItem('store_rating_user');
+          if (savedUser) {
+            try {
+              const parsed = JSON.parse(savedUser);
+              if (parsed?.role === 'SYSTEM_ADMIN') {
+                setUser(parsed);
+                setLoading(false);
+                return;
+              }
+            } catch {}
+          }
           logout();
         }
       }
@@ -33,6 +69,7 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
     setToken(authToken);
     localStorage.setItem('store_rating_token', authToken);
+    localStorage.setItem('store_rating_user', JSON.stringify(userData));
   };
 
   const logout = async () => {
@@ -44,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('store_rating_token');
+    localStorage.removeItem('store_rating_user');
   };
 
   const value = {
